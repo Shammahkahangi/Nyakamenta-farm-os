@@ -295,21 +295,21 @@ export async function ensureWebSession() {
     return true;
   }
 
-  return new Promise((resolve) => {
-    showLoginScreen(() => resolve(true));
-  });
+  // Redirect unauthenticated web users to the staff portal login page
+  window.location.href = '/staff-portal.html';
+  return new Promise(() => {}); // page redirects
 }
 
 export async function signOutWeb() {
   if (useLocalWebBridge) {
     resetEstateRole();
     window.__estateWebBridge = undefined;
-    window.location.reload();
+    window.location.href = '/staff-portal.html';
     return;
   }
   if (!supabaseClient) return;
   await supabaseClient.auth.signOut();
   resetEstateRole();
   window.__estateWebBridge = undefined;
-  window.location.reload();
+  window.location.href = '/staff-portal.html';
 }
