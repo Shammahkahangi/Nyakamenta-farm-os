@@ -1,8 +1,13 @@
 /* Nyakamenta — homepage interactions + live data */
 (function () {
-  document.documentElement.className = 'js';
+  const root = document.documentElement;
+  root.className = 'js';
 
-  // ── Sticky nav ────────────────────────────────────────────
+  // Default hero variant (Tweaks may override). Persist last choice.
+  const savedHero = localStorage.getItem('nyk_hero');
+  root.setAttribute('data-hero', savedHero || 'fullbleed');
+
+  // ── Sticky nav: solid after scrolling past a bit of the hero ────────────────
   const nav = document.getElementById('nav');
   const onScroll = () => {
     if (window.scrollY > window.innerHeight * 0.7) nav.classList.add('solid');
@@ -11,7 +16,7 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // ── Scroll reveal ─────────────────────────────────────────
+  // ── Reveal on scroll — rect-based (robust across preview/iframe contexts) ─────
   let revealEls = [];
   const collect = () => { revealEls = [...document.querySelectorAll('.reveal:not(.in)')]; };
   const checkReveals = () => {
@@ -22,20 +27,23 @@
     }
     revealEls = revealEls.filter((el) => !el.classList.contains('in'));
   };
-  collect();
-  checkReveals();
+  const observeReveals = () => { collect(); checkReveals(); };
+  observeReveals();
   window.addEventListener('scroll', checkReveals, { passive: true });
   window.addEventListener('resize', () => { collect(); checkReveals(); }, { passive: true });
+  // Safety: ensure everything is visible shortly after load no matter what.
   setTimeout(() => { document.querySelectorAll('.reveal:not(.in)').forEach((el) => el.classList.add('in')); }, 1600);
+  // Re-run when hero variant swaps (newly shown elements need observing)
+  window.__nykObserveReveals = observeReveals;
 
-  // ── Mobile burger ─────────────────────────────────────────
+  // ── Mobile burger: simple jump to contact on small screens ──────────────────
   const burger = document.querySelector('.nav__burger');
   if (burger) burger.addEventListener('click', () => {
     const t = document.getElementById('experiences');
     if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 60, behavior: 'smooth' });
   });
 
-  // ── Live room availability ────────────────────────────────
+  // ── Live room availability ──────────────────────────────────────────────────
   async function loadRooms() {
     const cards = document.querySelectorAll('[data-room-code]');
     if (!cards.length) return;
@@ -65,7 +73,6 @@
           avail.style.color = isAvail ? 'var(--green)' : 'var(--clay)';
         }
         if (rate && unit.nightly_rate > 0) {
-          const usd = Math.round(unit.nightly_rate / 3700); // rough UGX → USD display
           rate.textContent = unit.nightly_rate > 500
             ? `UGX ${Number(unit.nightly_rate).toLocaleString()}`
             : `$${unit.nightly_rate}`;
@@ -75,7 +82,7 @@
   }
   loadRooms();
 
-  // ── Enquiry form → API ────────────────────────────────────
+  // ── Enquiry form → API ──────────────────────────────────────────────────────
   const enquiryForm = document.getElementById('enquiry-form');
   if (enquiryForm) {
     enquiryForm.addEventListener('submit', async (e) => {

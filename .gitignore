@@ -9,3 +9,4 @@ npm-cache/
 *.db-wal
 *.db-shm
 *.log
+*.zip

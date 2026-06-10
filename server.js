@@ -440,6 +440,59 @@ app.post('/api/public/enquiry', (req, res) => {
   }
 });
 
+// ── Viva Transport public endpoints (no auth) ─────────────────────────────────
+
+/** Contact form submission — saves to viva_enquiries. */
+app.post('/api/public/viva-contact', (req, res) => {
+  try {
+    const { name, company, email, phone, subject, message } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ ok: false, error: 'Name is required.' });
+    }
+    db.execute(
+      `INSERT INTO viva_enquiries (type, name, company, email, phone, subject, message)
+       VALUES ('contact', ?, ?, ?, ?, ?, ?)`,
+      [
+        String(name).trim().slice(0, 200),
+        String(company || '').trim().slice(0, 200),
+        String(email || '').trim().slice(0, 200),
+        String(phone || '').trim().slice(0, 80),
+        String(subject || '').trim().slice(0, 300),
+        String(message || '').trim().slice(0, 2000),
+      ]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+/** Quote estimator submission — saves estimated quote to viva_enquiries. */
+app.post('/api/public/viva-quote', (req, res) => {
+  try {
+    const { name, company, email, phone, from_loc, to_loc, load_tonnes, service, est_price, message } = req.body || {};
+    db.execute(
+      `INSERT INTO viva_enquiries (type, name, company, email, phone, from_loc, to_loc, load_tonnes, service, est_price, message)
+       VALUES ('quote', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        String(name || '').trim().slice(0, 200),
+        String(company || '').trim().slice(0, 200),
+        String(email || '').trim().slice(0, 200),
+        String(phone || '').trim().slice(0, 80),
+        String(from_loc || '').trim().slice(0, 100),
+        String(to_loc || '').trim().slice(0, 100),
+        parseFloat(load_tonnes) || null,
+        String(service || '').trim().slice(0, 100),
+        String(est_price || '').trim().slice(0, 100),
+        String(message || '').trim().slice(0, 2000),
+      ]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.use(express.static(publicDir));

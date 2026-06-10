@@ -4,10 +4,10 @@
 <meta charset="UTF-8" />
 <script>document.documentElement.className='js';</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Nyakamenta Farm &amp; Lodge — Kashari, Uganda</title>
+<title>Nyakamenta Farm & Lodge — Kashari, Uganda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Spectral:ital,wght@0,400;0,500;1,500&family=Marcellus&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="stylesheet" href="layout.css" />
 <link rel="stylesheet" href="sections.css" />
@@ -35,29 +35,74 @@
 </header>
 
 <main id="top">
+<!-- ============ HERO ============ -->
+<section class="hero">
 
-<!-- ============ HERO — Full bleed ============ -->
-<section class="hero" id="hero">
-  <div class="hero--fb">
-    <div class="hero__media">
-      <div class="slot on-dark"><span class="slot__tag">Hero photo — mist over the coffee rows at dawn · 2400×1500</span></div>
-    </div>
-    <div class="hero__scrim"></div>
-    <div class="wrap hero__inner">
-      <p class="kicker on-dark reveal">Kashari Highlands · Western Uganda</p>
-      <h1 class="display hero__title reveal" data-d="1">Stay where the coffee grows.</h1>
-      <div class="hero--fb hero__row" style="position:static;min-height:unset;align-items:flex-end">
-        <p class="lede hero__lede reveal" data-d="2">A working coffee estate and highland lodge in Kashari — wake to mist over the rows, walk the harvest, and taste it roasted the same morning.</p>
-        <div class="reveal" data-d="3" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
-          <a href="#contact" class="btn btn--clay btn--lg">Book a stay <span class="arr">→</span></a>
-          <a href="#coffee" class="btn btn--ghost-light btn--lg">Our coffee</a>
-        </div>
+  <!-- Variant A — Full bleed -->
+  <div class="hero__variant hero__variant--fullbleed">
+    <div class="hero--fb">
+      <div class="hero__media">
+        <div class="slot on-dark"><span class="slot__tag">Hero photo — mist over the coffee rows at dawn · 2400×1500</span></div>
       </div>
-      <div class="hero__coords reveal" data-d="4">
-        <span>0°37′ S · 30°39′ E</span><span>ELEV 1,540 M</span><span>EST. 2014</span>
+      <div class="hero__scrim"></div>
+      <div class="wrap hero__inner">
+        <p class="kicker on-dark reveal">Kashari Highlands · Western Uganda</p>
+        <h1 class="display hero__title reveal" data-d="1">Stay where the coffee grows.</h1>
+        <div class="hero__row">
+          <p class="lede hero__lede reveal" data-d="2">A working coffee estate and highland lodge in Kashari — wake to mist over the rows, walk the harvest, and taste it roasted the same morning.</p>
+          <div class="reveal" data-d="3" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            <a href="#contact" class="btn btn--clay btn--lg">Book a stay <span class="arr">→</span></a>
+            <a href="#coffee" class="btn btn--ghost-light btn--lg">Our coffee</a>
+          </div>
+        </div>
+        <div class="hero__coords reveal" data-d="4" style="margin-top:34px">
+          <span>0°37′ S · 30°39′ E</span><span>ELEV 1,540 M</span><span>EST. 2014</span>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Variant B — Split editorial -->
+  <div class="hero__variant hero__variant--split">
+    <div class="hero--split">
+      <div class="hero__text">
+        <p class="kicker reveal">Kashari Highlands · Western Uganda</p>
+        <h1 class="display hero__title reveal" data-d="1">Stay where the coffee grows.</h1>
+        <p class="lede reveal" data-d="2">A working coffee estate and highland lodge in Kashari — wake to mist over the rows, walk the harvest, and taste it roasted the same morning.</p>
+        <div class="reveal" data-d="3" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:30px">
+          <a href="#contact" class="btn btn--clay btn--lg">Book a stay <span class="arr">→</span></a>
+          <a href="#experiences" class="btn btn--ghost btn--lg">Plan a visit</a>
+        </div>
+        <div class="hero__meta reveal" data-d="4">
+          <div><span class="n display">1,540 m</span><span class="l">Elevation</span></div>
+          <div><span class="n display">38 ha</span><span class="l">Estate &amp; forest</span></div>
+          <div><span class="n display">Est. 2014</span><span class="l">Family run</span></div>
+        </div>
+      </div>
+      <div class="hero__media">
+        <div class="slot"><span class="slot__tag">Hero photo — coffee picker on the slopes · 1400×1700</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variant C — Centered minimal -->
+  <div class="hero__variant hero__variant--centered">
+    <div class="hero--center">
+      <p class="kicker reveal">Kashari Highlands · Western Uganda</p>
+      <h1 class="display hero__title reveal" data-d="1">Stay where the<br/>coffee grows.</h1>
+      <p class="lede hero__lede reveal" data-d="2">A working coffee estate and highland lodge in Kashari — wake to mist over the rows, walk the harvest, and taste it roasted the same morning.</p>
+      <div class="hero__cta reveal" data-d="3">
+        <a href="#contact" class="btn btn--clay btn--lg">Book a stay <span class="arr">→</span></a>
+        <a href="#coffee" class="btn btn--ghost btn--lg">Our coffee</a>
+      </div>
+      <div class="wrap hero__strip reveal" data-d="4">
+        <div class="slot"><span class="slot__tag">Estate · 900×600</span></div>
+        <div class="slot"><span class="slot__tag">Roastery · 900×600</span></div>
+        <div class="slot"><span class="slot__tag">Lodge deck · 900×600</span></div>
+      </div>
+    </div>
+  </div>
+
 </section>
 
 <!-- ============ STORY ============ -->
@@ -190,7 +235,7 @@
       <p class="kicker on-dark reveal">Sustainability</p>
       <h2 class="display reveal" data-d="1">Shade-grown, spring-fed, locally kept.</h2>
       <p class="reveal" data-d="2">We farm under native shade trees, compost the pulp back into the rows, and protect the stream forest that feeds the valley. Nearly everyone who works here lives within walking distance — and shares in the harvest.</p>
-      <a href="#story" class="link-underline reveal" data-d="3" style="color:var(--gold);margin-top:26px;display:inline-flex">Read our land commitment <span class="arr">→</span></a>
+      <a href="#story" class="link-underline reveal" data-d="3" style="color:var(--gold);margin-top:26px">Read our land commitment <span class="arr">→</span></a>
     </div>
     <div class="sustain__stats reveal" data-d="2">
       <div class="cell"><span class="k">Canopy</span><div class="n display">100%</div><div class="l">Shade-grown rows</div></div>
@@ -261,18 +306,10 @@
         <div class="contact__pin"><span class="lbl">Nyakamenta</span><span class="dot"></span></div>
       </div>
       <div class="contact__details">
-        <div class="contact__row reveal">
-          <span class="k">Where</span>
-          <span class="v"><strong>Nyakamenta Estate</strong><br/>Kashari, Mbarara District<br/>Western Region, Uganda</span>
-        </div>
-        <div class="contact__row reveal" data-d="1">
-          <span class="k">Getting here</span>
-          <span class="v">~5 hrs drive from Kampala · 40 min from Mbarara town. We can arrange transfers.</span>
-        </div>
-        <div class="contact__row reveal" data-d="1">
-          <span class="k">Reach us</span>
-          <span class="v">stay@nyakamenta.coffee<br/>+256 700 000 000</span>
-        </div>
+        <div class="contact__row reveal"><span class="k">Where</span><span class="v"><strong>Nyakamenta Estate</strong><br/>Kashari, Mbarara District<br/>Western Region, Uganda</span></div>
+        <div class="contact__row reveal" data-d="1"><span class="k">Getting here</span><span class="v">~5 hrs drive from Kampala · 40 min from Mbarara town. We can arrange transfers.</span></div>
+        <div class="contact__row reveal" data-d="1"><span class="k">Reach us</span><span class="v">stay@nyakamenta.coffee<br/>+256 700 000 000</span></div>
+
         <form class="enquire reveal" data-d="2" id="enquiry-form">
           <div class="field"><label>Name</label><input type="text" name="name" placeholder="Your name" required /></div>
           <div class="field"><label>Phone (optional)</label><input type="tel" name="phone" placeholder="+256 700 000 000" /></div>
@@ -293,7 +330,6 @@
     </div>
   </div>
 </section>
-
 </main>
 
 <!-- ============ FOOTER ============ -->
@@ -331,7 +367,7 @@
         </ul>
       </div>
       <div class="footer__news">
-        <h4>From the hill</h4>
+        <h4 style="font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:18px">From the hill</h4>
         <p>Seasonal notes, harvest news, and the occasional micro-lot release.</p>
         <form class="footer__field" onsubmit="event.preventDefault(); this.querySelector('button').textContent='✓';">
           <input type="email" placeholder="you@email.com" aria-label="Email" />
@@ -351,6 +387,14 @@
   </div>
 </footer>
 
+<!-- Tweaks mount -->
+<div id="tweaks-root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="app.js"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tweaks.jsx"></script>
 </body>
 </html>

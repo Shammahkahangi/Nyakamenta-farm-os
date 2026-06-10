@@ -5,23 +5,26 @@
 
 /* ---- Tokens ---------------------------------------------- */
 :root {
-  --paper:      oklch(0.967 0.012 84);
-  --paper-2:    oklch(0.945 0.016 80);
-  --ink:        oklch(0.245 0.018 60);
+  /* Palette: EARTH (default) */
+  --paper:      oklch(0.967 0.012 84);   /* warm oat */
+  --paper-2:    oklch(0.945 0.016 80);   /* slightly deeper card */
+  --ink:        oklch(0.245 0.018 60);   /* espresso text */
   --ink-soft:   oklch(0.40 0.020 60);
   --ink-faint:  oklch(0.55 0.018 65);
-  --line:       oklch(0.86 0.014 80);
-  --espresso:   oklch(0.205 0.020 50);
+  --line:       oklch(0.86 0.014 80);    /* hairlines on paper */
+  --espresso:   oklch(0.205 0.020 50);   /* dark section bg */
   --espresso-2: oklch(0.255 0.022 52);
   --cream-on-dark: oklch(0.93 0.020 82);
   --faint-on-dark: oklch(0.70 0.018 70);
 
+  /* Accents — shared chroma/lightness, varied hue */
   --green:   oklch(0.52 0.085 150);
   --green-d: oklch(0.40 0.070 150);
   --clay:    oklch(0.585 0.105 47);
   --clay-d:  oklch(0.49 0.095 45);
   --gold:    oklch(0.74 0.090 78);
 
+  /* Type */
   --display: "Cormorant Garamond", Georgia, serif;
   --body:    "Hanken Grotesk", system-ui, sans-serif;
   --mono:    "Space Mono", ui-monospace, monospace;
@@ -30,6 +33,7 @@
   --h-tight: 1.02;
   --h-trim: -0.01em;
 
+  /* Spacing rhythm */
   --gutter: clamp(20px, 5vw, 88px);
   --section-y: clamp(72px, 11vw, 168px);
   --maxw: 1320px;
@@ -37,6 +41,34 @@
   --radius: 3px;
   --shadow-card: 0 1px 2px oklch(0.2 0.02 60 / 0.06), 0 14px 40px oklch(0.2 0.02 60 / 0.08);
 }
+
+/* Palette: FOREST */
+:root[data-palette="forest"] {
+  --paper:      oklch(0.955 0.014 120);
+  --paper-2:    oklch(0.93 0.018 125);
+  --ink:        oklch(0.235 0.022 145);
+  --line:       oklch(0.85 0.018 125);
+  --espresso:   oklch(0.225 0.030 155);
+  --espresso-2: oklch(0.275 0.032 155);
+  --green:   oklch(0.55 0.095 150);
+  --clay:    oklch(0.60 0.100 55);
+}
+
+/* Palette: CLAY */
+:root[data-palette="clay"] {
+  --paper:      oklch(0.972 0.014 70);
+  --paper-2:    oklch(0.95 0.020 60);
+  --ink:        oklch(0.265 0.030 45);
+  --line:       oklch(0.87 0.020 60);
+  --espresso:   oklch(0.30 0.055 40);
+  --espresso-2: oklch(0.355 0.060 42);
+  --clay:    oklch(0.60 0.120 45);
+  --green:   oklch(0.52 0.085 155);
+}
+
+/* Type swap tweak */
+:root[data-display="spectral"]  { --display: "Spectral", Georgia, serif; --display-wght: 500; }
+:root[data-display="marcellus"] { --display: "Marcellus", Georgia, serif; --display-wght: 400; }
 
 /* ---- Reset / base ---------------------------------------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -58,7 +90,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 
 ::selection { background: var(--clay); color: var(--paper); }
 
-/* ---- Type ---------------------------------------- */
+/* ---- Reusable type ---------------------------------------- */
 .display {
   font-family: var(--display);
   font-weight: var(--display-wght);
@@ -92,6 +124,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding-inline: var(--gutter); }
 .section { padding-block: var(--section-y); }
 .rule { height: 1px; background: var(--line); border: 0; }
+.rule-dark { height: 1px; background: oklch(1 0 0 / 0.12); border: 0; }
 
 /* ---- Buttons ---------------------------------------------- */
 .btn {
@@ -110,6 +143,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .btn:hover .arr { transform: translateX(4px); }
 .btn--clay { --bg: var(--clay); --fg: var(--paper); }
 .btn--clay:hover { --bg: var(--clay-d); }
+.btn--green { --bg: var(--green); --fg: var(--paper); }
 .btn--ghost {
   --bg: transparent; --fg: var(--ink);
   border: 1px solid var(--ink);
@@ -169,7 +203,12 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
   backdrop-filter: blur(2px);
 }
 
-/* ---- Reveal animation ------------------------------------- */
+/* ---- Reveal animation -------------------------------------
+   Visible is the default. Hidden pre-state applies only with JS
+   active and before entrance (:not(.in)), with NO transition —
+   so adding .in is an instant jump to full opacity. The entrance
+   motion is a separate keyframe animation (decorative); if it
+   never plays, the element still rests fully visible. */
 @media (prefers-reduced-motion: no-preference) {
   html.js .reveal:not(.in) { opacity: 0; transform: translateY(22px); }
   html.js .reveal.in { animation: nyk-rise .9s cubic-bezier(.2,.7,.2,1); }

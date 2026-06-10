@@ -854,6 +854,23 @@ function initDB(appPath) {
         CREATE INDEX IF NOT EXISTS idx_logbook_attachments_parent
             ON logbook_attachments(parent_type, parent_id);
 
+        CREATE TABLE IF NOT EXISTS viva_enquiries (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            type        TEXT NOT NULL DEFAULT 'contact',  -- 'contact' | 'quote'
+            name        TEXT,
+            company     TEXT,
+            email       TEXT,
+            phone       TEXT,
+            subject     TEXT,
+            message     TEXT,
+            from_loc    TEXT,
+            to_loc      TEXT,
+            load_tonnes REAL,
+            service     TEXT,
+            est_price   TEXT,
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS payroll_lines (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             payroll_run_id INTEGER NOT NULL,
