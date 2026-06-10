@@ -1,0 +1,7 @@
+{
+  "watch": ["src", "public", "styles"],
+  "ext": "js,html,css,cjs,mjs",
+  "ignore": ["dist", "node_modules", "**/*.map"],
+  "exec": "electron .",
+  "delay": "300"
+}

@@ -1,0 +1,23 @@
+{
+  "label": "Default",
+  "source_note": "Nyakamenta Coffee Farm — Maintenance Rates PDF; editable in Field Operations",
+  "effective_from": "2026-01-01",
+  "lines": [
+    { "activity_key": "watering", "label": "Watering", "unit": "per_acre", "rate_ugx": 25000 },
+    { "activity_key": "digging", "label": "Digging", "unit": "per_acre", "rate_ugx": 90000 },
+    { "activity_key": "slashing", "label": "Slashing", "unit": "per_acre", "rate_ugx": 50000 },
+    { "activity_key": "spraying_weeds", "label": "Spraying weeds", "unit": "per_acre", "rate_ugx": 30000 },
+    { "activity_key": "granular_fertilizer", "label": "Application of granular fertilizer", "unit": "per_acre", "rate_ugx": 30000 },
+    { "activity_key": "desuckering", "label": "De-suckering", "unit": "per_acre", "rate_ugx": 20000 },
+    { "activity_key": "ring_mulching", "label": "Ring mulching", "unit": "per_acre", "rate_ugx": 20000 },
+    { "activity_key": "ring_weeding", "label": "Ring weeding", "unit": "per_acre", "rate_ugx": 35000 },
+    { "activity_key": "pest_disease", "label": "Pest and disease control", "unit": "per_acre", "rate_ugx": 20000 },
+    {
+      "activity_key": "professional_fees",
+      "label": "Professional fees (supervisor, block leaders, consultant)",
+      "unit": "fixed_monthly",
+      "rate_ugx": 3150000,
+      "allocation_method": "whole_farm"
+    }
+  ]
+}

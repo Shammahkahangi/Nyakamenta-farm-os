@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "estateAcres": 0,
+    "farmPlantCapacity": 0,
+    "currentSeason": "",
+    "selectedGrade": "",
+    "currency": "UGX",
+    "exchangeRate": 1,
+    "user": {
+      "name": "",
+      "role": "",
+      "initials": ""
+    }
+  },
+  "blocks": [],
+  "batches": [],
+  "finance": {
+    "seasons": [],
+    "current": {
+      "totalRevenue": 0,
+      "totalExpenses": 0,
+      "netProfit": 0,
+      "costPerKg": 0,
+      "sellingPricePerKg": 0,
+      "categories": [],
+      "lineItems": [],
+      "seasonal": []
+    }
+  },
+  "exports": [],
+  "workforce": {
+    "totalWorkers": 0,
+    "permanent": 0,
+    "seasonal": 0,
+    "departments": [],
+    "payrollMtd": 0
+  },
+  "aiInsights": [],
+  "inventory": [],
+  "computed": {}
+}

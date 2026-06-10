@@ -1,0 +1,670 @@
+/* Estate OS — top bar, activity feed, side panel, payroll expand, SACCO modern UI
+   Link after styles.css and coffee-gateway-theme-overrides.css if used */
+
+#toolbar.top-bar {
+  height: auto;
+  min-height: var(--toolbar-h, 52px);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.top-bar {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(200px, 2fr) auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.top-bar-title {
+  font-family: var(--font-display, "Poppins", sans-serif);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-bar-center {
+  display: flex;
+  justify-content: center;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.metric-search-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+}
+
+.metric-search-popover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  max-height: min(58vh, 440px);
+  overflow-y: auto;
+  z-index: 100;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.metric-search-row {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-search-row:last-child {
+  border-bottom: none;
+}
+
+.metric-search-row-meta {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.metric-search-row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.metric-search-row-label {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.metric-search-row-value {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.metric-search-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.top-bar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 400px;
+  padding: 6px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+}
+
+.top-bar-search .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.top-bar-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.top-bar-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.icon-btn.has-dot {
+  position: relative;
+}
+
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  background: var(--accent-secondary, hsl(0 84% 58%));
+  border-radius: 50%;
+  border: 2px solid var(--bg-surface);
+}
+
+/* Activity feed */
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: var(--radius, 8px);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.activity-feed-header {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.12s ease;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-item:hover {
+  background: var(--bg-overlay);
+}
+
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: hsla(221 78% 53% / 0.12);
+  color: var(--green-text);
+}
+
+.activity-icon.lodge {
+  background: var(--accent-secondary-muted, hsla(0 84% 58% / 0.16));
+  color: var(--accent-secondary-text, hsl(0 90% 72%));
+}
+
+.activity-icon.sacco {
+  background: hsla(43 96% 56% / 0.14);
+  color: var(--gold-text);
+}
+
+.activity-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.activity-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Chart cards */
+.chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  padding: 16px;
+  min-height: 220px;
+}
+
+.chart-card h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.simple-line-chart {
+  width: 100%;
+  height: 140px;
+}
+
+.simple-line-chart polyline {
+  fill: none;
+  stroke: var(--green-mid);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.simple-line-chart .area-fill {
+  fill: url(#chartGrad);
+  opacity: 0.25;
+}
+
+.chart-bars-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 120px;
+  padding-top: 8px;
+}
+
+.chart-bar {
+  flex: 1;
+  min-width: 8px;
+  border-radius: 4px 4px 0 0;
+  background: var(--green-mid);
+  transition: opacity 0.15s;
+}
+
+.chart-bar.secondary {
+  background: var(--accent-secondary, hsl(0 84% 58%));
+}
+
+.chart-bar:hover {
+  opacity: 0.85;
+}
+
+.chart-bar-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Lodge unit cards */
+.lodge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.lodge-unit-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  padding: 14px;
+  background: var(--bg-surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.lodge-unit-card.occupied {
+  border-color: hsla(38 92% 50% / 0.45);
+}
+
+.lodge-unit-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.lodge-unit-code {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.lodge-unit-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 4px 0 8px;
+  color: var(--text-primary);
+}
+
+/* SACCO tabs */
+.sacco-hub-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.sacco-hub-tab {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sacco-hub-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-overlay);
+}
+
+.sacco-hub-tab.active {
+  background: var(--green);
+  color: #fff;
+}
+
+/* Member side panel */
+.side-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+  animation: fade-in 0.15s ease;
+}
+
+.side-panel {
+  width: min(440px, 100vw);
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.25);
+  animation: slide-in-right 0.2s ease;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.side-panel-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.side-panel-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: var(--bg-raised);
+}
+
+.side-panel-close:hover {
+  color: var(--text-primary);
+}
+
+.member-hero-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-display, "Poppins", sans-serif);
+}
+
+.member-hero-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.member-stat-pill {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+}
+
+.member-stat-pill .lbl {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.member-stat-pill .val {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--text-primary);
+}
+
+.member-inner-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  gap: 4px;
+}
+
+.member-inner-tab {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+}
+
+.member-inner-tab.active {
+  color: var(--green-text);
+  border-bottom-color: var(--green-mid);
+}
+
+.side-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.txn-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+  background: var(--bg-raised);
+}
+
+.txn-amount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.txn-amount.inflow {
+  color: hsl(152 65% 42%);
+}
+
+.txn-amount.outflow {
+  color: var(--red-text);
+}
+
+[data-theme="light"] .txn-amount.inflow {
+  color: hsl(152 70% 30%);
+}
+
+.txn-detail {
+  text-align: right;
+}
+
+.txn-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.txn-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Loan progress */
+.loan-progress-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--bg-overlay);
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.loan-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--green-mid);
+  transition: width 0.3s ease;
+}
+
+/* Payroll expandable */
+.payroll-row-expand {
+  cursor: pointer;
+}
+
+.payroll-row-expand:hover td {
+  background: var(--bg-overlay);
+}
+
+.payroll-detail-row td {
+  background: var(--bg-raised);
+  padding: 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.payroll-breakdown {
+  padding: 16px 20px 16px 48px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.85;
+}
+
+.payroll-breakdown .line {
+  display: flex;
+  justify-content: space-between;
+  max-width: 280px;
+}
+
+.payroll-breakdown .net-line {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  max-width: 280px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Farm quick grid */
+.farm-quick-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.overview-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.sacco-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.farm-quick-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 1200px) {
+  .sacco-forms-grid,
+  .lodge-forms-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .overview-charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .sacco-mid-grid,
+  .farm-quick-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .sacco-forms-grid,
+  .lodge-forms-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .top-bar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .top-bar-center {
+    max-width: none;
+    order: 3;
+  }
+  .farm-quick-kpis {
+    grid-template-columns: 1fr;
+  }
+}

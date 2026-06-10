@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Staff Portal — Nyakamenta Estate System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="portal.css" />
+</head>
+<body>
+<div class="portal">
+
+  <!-- Left: brand / system panel -->
+  <aside class="portal__aside">
+    <div class="slot on-dark"><span class="slot__tag">Estate at dawn · system backdrop</span></div>
+    <div class="scrim"></div>
+
+    <div class="portal__brand">
+      <span class="m">Nyakamenta</span>
+      <span class="s">Estate System</span>
+    </div>
+
+    <div class="portal__hero">
+      <h1 class="display">The hill, in one system.</h1>
+      <p>Harvest logs, inventory, bookings and payroll — one secure place for the team running Nyakamenta.</p>
+
+      <div class="portal__modules">
+        <div class="mod"><span class="ico">⛰</span><div class="txt"><div class="t">Harvest Logs</div><div class="st"><i></i>Live</div></div></div>
+        <div class="mod"><span class="ico">▦</span><div class="txt"><div class="t">Inventory</div><div class="st"><i></i>Live</div></div></div>
+        <div class="mod"><span class="ico">◷</span><div class="txt"><div class="t">Bookings</div><div class="st"><i></i>Live</div></div></div>
+        <div class="mod"><span class="ico">◆</span><div class="txt"><div class="t">Payroll</div><div class="st"><i></i>Live</div></div></div>
+      </div>
+    </div>
+
+    <div class="portal__foot">
+      <span>NYK-OS · v4.2</span>
+      <span>0°37′ S · 30°39′ E</span>
+      <span>STATUS: ALL SYSTEMS NORMAL</span>
+    </div>
+  </aside>
+
+  <!-- Right: login form -->
+  <main class="portal__main">
+    <div class="portal__top">
+      <a class="portal__back" href="index.html">← Back to site</a>
+      <span class="portal__chip"><i></i>Secure connection</span>
+    </div>
+
+    <div class="portal__form-wrap">
+      <h2 class="display">Staff sign-in</h2>
+      <p class="sub">Welcome back. Sign in to the estate system.</p>
+
+      <form class="pform" id="loginForm" novalidate>
+        <div id="loginError" style="display:none;background:oklch(0.95 0.04 30);border:1px solid oklch(0.80 0.07 30);color:oklch(0.40 0.10 30);border-radius:var(--radius);padding:11px 14px;font-size:13.5px;margin-bottom:4px;"></div>
+        <div class="pfield">
+          <label for="staffId">Email address</label>
+          <div class="pinput">
+            <input id="staffId" type="email" autocomplete="username" placeholder="name@nyakamenta.coffee" />
+          </div>
+        </div>
+
+        <div class="pfield">
+          <label for="pw">Password</label>
+          <div class="pinput">
+            <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••" />
+            <button type="button" class="toggle" id="pwToggle" aria-label="Show password">Show</button>
+          </div>
+        </div>
+
+        <div class="pform__row">
+          <label class="pcheck"><input type="checkbox" id="remember" /> Keep me signed in</label>
+          <a href="#">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn--clay btn--lg psubmit" id="submitBtn">Sign in <span class="arr">→</span></button>
+      </form>
+
+      <p class="portal__help">Need access? Ask your supervisor or <a href="#">contact the office</a>.</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  // ── Password toggle ───────────────────────────────────────
+  const pw = document.getElementById('pw');
+  const tgl = document.getElementById('pwToggle');
+  tgl.addEventListener('click', () => {
+    const show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    tgl.textContent = show ? 'Hide' : 'Show';
+  });
+
+  // ── Auth ──────────────────────────────────────────────────
+  const form = document.getElementById('loginForm');
+  const btn  = document.getElementById('submitBtn');
+  const errEl = document.getElementById('loginError');
+
+  function showError(msg) {
+    if (!errEl) return;
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+  function clearError() {
+    if (errEl) errEl.style.display = 'none';
+  }
+
+  async function getSupabaseClient() {
+    const cfg = await fetch('/api/config').then((r) => r.json()).catch(() => ({}));
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      return window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    }
+    return null;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const emailInput = document.getElementById('staffId');
+    const email = emailInput.value.trim();
+    const password = pw.value;
+
+    if (!email) {
+      emailInput.focus();
+      emailInput.style.borderColor = 'var(--clay)';
+      return;
+    }
+
+    btn.setAttribute('data-state', 'loading');
+    btn.innerHTML = 'Authenticating…';
+    btn.disabled = true;
+
+    try {
+      const cfg = await fetch('/api/config').then((r) => r.json()).catch(() => ({}));
+
+      // ── Local dev mode (no Supabase) ─────────────────────
+      if (cfg.localWebAuth) {
+        btn.innerHTML = 'Verified ✓';
+        btn.style.background = 'var(--green)';
+        setTimeout(() => {
+          btn.innerHTML = 'Opening dashboard…';
+          window.location.href = '/';
+        }, 800);
+        return;
+      }
+
+      // ── Supabase sign-in ──────────────────────────────────
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+        showError('Auth service not configured. Contact your administrator.');
+        btn.innerHTML = 'Sign in <span class="arr">→</span>';
+        btn.disabled = false;
+        btn.removeAttribute('data-state');
+        return;
+      }
+
+      const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showError(error.message || 'Sign-in failed. Check your credentials.');
+        btn.innerHTML = 'Sign in <span class="arr">→</span>';
+        btn.disabled = false;
+        btn.removeAttribute('data-state');
+        return;
+      }
+
+      // Store token so the app shell can pick it up
+      if (data?.session?.access_token) {
+        localStorage.setItem('sb_access_token', data.session.access_token);
+        localStorage.setItem('sb_refresh_token', data.session.refresh_token || '');
+      }
+
+      btn.innerHTML = 'Verified ✓';
+      btn.style.background = 'var(--green)';
+      setTimeout(() => {
+        btn.innerHTML = 'Opening dashboard…';
+        window.location.href = '/';
+      }, 800);
+
+    } catch (err) {
+      showError('Connection error. Please try again.');
+      btn.innerHTML = 'Sign in <span class="arr">→</span>';
+      btn.disabled = false;
+      btn.removeAttribute('data-state');
+    }
+  });
+</script>
+</body>
+</html>

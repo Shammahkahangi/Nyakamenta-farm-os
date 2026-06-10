@@ -1,0 +1,11 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+dist/
+npm-cache/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log

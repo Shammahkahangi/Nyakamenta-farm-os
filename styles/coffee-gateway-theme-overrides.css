@@ -1,0 +1,785 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Poppins:wght@600;700;800&display=swap");
+
+/**
+ * Coffee Estate OS — Gateway-aligned theme layer
+ *
+ * 1) Copy this file to: Coffee management system/styles/coffee-gateway-theme-overrides.css
+ * 2) In public/index.html, AFTER styles.css add:
+ *    <link rel="stylesheet" href="../styles/coffee-gateway-theme-overrides.css" />
+ *
+ * @import above loads DM Sans + Poppins; you can remove the old Inter link from index.html.
+ */
+
+:root {
+  --radius: 8px;
+  --font: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Surfaces — cool slate (gateway-style), not espresso brown */
+  --bg-base: hsl(222 47% 7%);
+  --bg-surface: hsl(222 40% 11%);
+  --bg-raised: hsl(222 35% 14%);
+  --bg-overlay: hsl(222 28% 18%);
+  --border: hsl(220 25% 22%);
+  --border-subtle: hsl(220 22% 16%);
+
+  --text-primary: hsl(210 40% 98%);
+  --text-secondary: hsl(215 16% 72%);
+  --text-muted: hsl(215 12% 48%);
+
+  /* Legacy names: primary brand = navy blue */
+  --green: hsl(221 83% 42%);
+  --green-mid: hsl(221 78% 53%);
+  --green-bright: hsl(221 90% 62%);
+  --green-text: hsl(213 94% 78%);
+
+  /* KPI / money highlights — clean gold */
+  --gold: hsl(43 96% 56%);
+  --gold-bright: hsl(48 100% 62%);
+  --gold-text: hsl(48 100% 74%);
+  --gold-bg: hsla(43 96% 56% / 0.14);
+
+  /* Second door / accent (gateway secondary red) */
+  --accent-secondary: hsl(0 84% 58%);
+  --accent-secondary-text: hsl(0 90% 72%);
+  --accent-secondary-muted: hsla(0 84% 58% / 0.16);
+
+  --red: hsl(0 72% 52%);
+  --red-bg: hsla(0 72% 52% / 0.14);
+  --red-text: hsl(0 90% 72%);
+
+  --amber: hsl(38 92% 50%);
+  --amber-bg: hsla(38 92% 50% / 0.14);
+  --amber-text: hsl(38 98% 62%);
+
+  --coffee-green: var(--green);
+  --alert-red: hsl(0 84% 60%);
+}
+
+[data-theme="light"] {
+  --bg-base: hsl(0 0% 100%);
+  --bg-surface: hsl(0 0% 99%);
+  --bg-raised: hsl(220 15% 97%);
+  --bg-overlay: hsl(220 14% 93%);
+  --border: hsl(220 15% 90%);
+  --border-subtle: hsl(220 15% 94%);
+
+  --text-primary: hsl(220 80% 15%);
+  --text-secondary: hsl(220 15% 35%);
+  --text-muted: hsl(220 15% 45%);
+
+  --green: hsl(220 80% 26%);
+  --green-mid: hsl(220 70% 40%);
+  --green-bright: hsl(220 75% 48%);
+  --green-text: hsl(220 80% 32%);
+
+  --gold: hsl(43 90% 42%);
+  --gold-bright: hsl(43 95% 48%);
+  --gold-text: hsl(38 90% 28%);
+  --gold-bg: hsla(43 90% 42% / 0.1);
+
+  --accent-secondary: hsl(0 85% 48%);
+  --accent-secondary-text: hsl(0 75% 32%);
+  --accent-secondary-muted: hsla(0 85% 48% / 0.12);
+
+  --red: hsl(0 72% 44%);
+  --red-bg: hsla(0 72% 44% / 0.1);
+  --red-text: hsl(0 65% 38%);
+
+  --amber: hsl(38 90% 40%);
+  --amber-bg: hsla(38 90% 40% / 0.12);
+  --amber-text: hsl(32 85% 32%);
+
+  --coffee-green: var(--green);
+  --alert-red: hsl(0 75% 42%);
+}
+
+html,
+body {
+  font-family: var(--font);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Shell — subtle glass toolbar */
+#toolbar {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Nav — remove amber wash */
+.nav-item.active {
+  background: hsla(221 78% 53% / 0.16) !important;
+  color: var(--green-text) !important;
+  border-left-color: var(--green-mid) !important;
+}
+
+[data-theme="light"] .nav-item.active {
+  background: hsla(220 80% 32% / 0.12) !important;
+  color: var(--green-text) !important;
+  border-left-color: var(--green-mid) !important;
+}
+
+[data-theme="light"] .pillar-tab.active {
+  color: #fff !important;
+}
+
+.badge.green {
+  background: hsla(221 78% 53% / 0.22) !important;
+  color: var(--green-text) !important;
+}
+
+.insight-card.low .insight-metric {
+  background: hsla(221 83% 53% / 0.15) !important;
+  color: var(--green-text) !important;
+}
+
+.block-card.selected {
+  background: hsla(221 83% 53% / 0.08) !important;
+}
+
+.pillar-tab.active {
+  box-shadow: 0 2px 8px hsla(221 83% 42% / 0.35) !important;
+}
+
+/* Door picker — match gateway semantics */
+#door-farm .material-symbols-outlined {
+  color: var(--green-text) !important;
+}
+
+#door-sacco .material-symbols-outlined {
+  color: var(--green-mid) !important;
+}
+
+#door-lodge .material-symbols-outlined {
+  color: var(--accent-secondary-text) !important;
+}
+
+/* Cards — shadcn-like radius */
+.card,
+.kpi-card,
+.section-card,
+.insight-card,
+.block-card,
+.modal,
+.modal-box {
+  border-radius: var(--radius);
+}
+
+.kpi-card.gold-border {
+  border-color: hsla(43 96% 56% / 0.35) !important;
+}
+
+/* Farm Intelligence — responsive chart row */
+.fi-chart-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1000px) {
+  .fi-chart-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Farm accounting — seamless “one sheet” (ruled sections, no card chrome) ── */
+.farm-accounting-light {
+  font-family: var(--font);
+  background: hsl(210 40% 99%);
+  color: hsl(222 47% 11%);
+  border-radius: 0;
+  padding: 8px 0 28px;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.farm-accounting-light .fa-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.farm-accounting-light .fa-header-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.farm-accounting-light .fa-range-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid hsl(214 32% 88%);
+  border-radius: 10px;
+}
+
+.farm-accounting-light .fa-range-bar-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: hsl(215 16% 42%);
+}
+
+.farm-accounting-light .fa-range-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.farm-accounting-light .fa-range-chip {
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(221 83% 32%);
+  background: hsl(214 56% 97%);
+  border: 1px solid hsl(214 32% 85%);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.farm-accounting-light .fa-range-chip:hover {
+  background: hsl(221 83% 94%);
+}
+
+.farm-accounting-light .fa-range-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.farm-accounting-light .fa-range-lab {
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(215 16% 45%);
+}
+
+.farm-accounting-light .fa-range-sep {
+  color: hsl(215 16% 65%);
+  font-size: 13px;
+}
+
+.farm-accounting-light .fa-input-date {
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid hsl(214 32% 85%);
+  border-radius: 8px;
+  color: hsl(222 47% 18%);
+  background: #fff;
+}
+
+.farm-accounting-light .fa-input-date:focus {
+  outline: none;
+  border-color: hsl(221 83% 45%);
+  box-shadow: 0 0 0 2px hsl(221 83% 45% / 0.2);
+}
+
+.farm-accounting-light .fa-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: hsl(222 47% 11%);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.farm-accounting-light .fa-book-ico {
+  font-size: 28px;
+  color: hsl(221 83% 35%);
+}
+
+.farm-accounting-light .fa-sub {
+  font-size: 0.8rem;
+  color: hsl(215 16% 47%);
+  margin: 6px 0 0;
+  max-width: 520px;
+  line-height: 1.45;
+}
+
+.farm-accounting-light .fa-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.farm-accounting-light .fa-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(222 47% 25%);
+  background: #fff;
+  border: 1px solid hsl(214 32% 85%);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.farm-accounting-light .fa-btn-outline:hover {
+  background: hsl(210 40% 99%);
+}
+
+.farm-accounting-light .fa-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: hsl(221 83% 35%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.farm-accounting-light .fa-btn-primary:hover {
+  background: hsl(221 83% 28%);
+}
+
+.farm-accounting-light .fa-tablist-wrap {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.farm-accounting-light .fa-tablist {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 4px;
+  background: hsl(214 32% 93%);
+  border-radius: 10px;
+  min-height: 44px;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+}
+
+.farm-accounting-light .fa-tab {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(215 16% 40%);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.farm-accounting-light .fa-tab.active {
+  background: #fff;
+  color: hsl(222 47% 11%);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.farm-accounting-light .fa-panel {
+  margin-top: 4px;
+}
+
+/* Major sections: horizontal rules only (no boxed cards) */
+.farm-accounting-light #fa-panel > .fa-blurb + .fa-report-preamble {
+  border-top: 1px solid hsl(214 32% 88%);
+  padding-top: 12px;
+  margin-top: 0;
+}
+
+.farm-accounting-light #fa-panel > .fa-blurb + .fa-card,
+.farm-accounting-light #fa-panel > .fa-report-preamble + .fa-card,
+.farm-accounting-light #fa-panel > .fa-card + .fa-card,
+.farm-accounting-light #fa-panel > .fa-card + .fa-kpi-grid,
+.farm-accounting-light #fa-panel > .fa-blurb + .fa-kpi-grid,
+.farm-accounting-light #fa-panel > .fa-kpi-grid + .fa-chart-row,
+.farm-accounting-light #fa-panel > .fa-chart-row + .fa-card {
+  border-top: 1px solid hsl(214 32% 88%);
+  padding-top: 16px;
+  margin-top: 0;
+}
+
+.farm-accounting-light .fa-report-preamble {
+  margin-bottom: 0;
+}
+
+.farm-accounting-light .fa-report-preamble > p:last-child {
+  margin-bottom: 0;
+}
+
+.farm-accounting-light .fa-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (min-width: 1024px) {
+  .farm-accounting-light .fa-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.farm-accounting-light .fa-kpi {
+  background: hsl(210 40% 99%);
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  padding: 12px 14px 14px;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.farm-accounting-light .fa-kpi-green {
+  border-left-color: #10b981;
+}
+.farm-accounting-light .fa-kpi-red {
+  border-left-color: #ef4444;
+}
+.farm-accounting-light .fa-kpi-blue {
+  border-left-color: #2563eb;
+}
+.farm-accounting-light .fa-kpi-orange {
+  border-left-color: #f97316;
+}
+.farm-accounting-light .fa-kpi-amber {
+  border-left-color: #f59e0b;
+}
+
+.farm-accounting-light .fa-kpi-h {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(215 16% 45%);
+  margin-bottom: 6px;
+}
+
+.farm-accounting-light .fa-kpi-v {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: hsl(222 47% 11%);
+}
+
+.farm-accounting-light .fa-kpi-v-blue {
+  color: #1e40af;
+}
+.farm-accounting-light .fa-kpi-v-orange {
+  color: #ea580c;
+}
+.farm-accounting-light .fa-kpi-v-amber {
+  color: #b45309;
+}
+
+.farm-accounting-light .fa-kpi-sub {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.farm-accounting-light .fa-kpi-f {
+  font-size: 11px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.farm-accounting-light .fa-kpi-f-green {
+  color: #059669;
+}
+.farm-accounting-light .fa-kpi-f-red {
+  color: #dc2626;
+}
+.farm-accounting-light .fa-kpi-f-muted {
+  color: hsl(215 16% 45%);
+}
+
+.farm-accounting-light .fa-chart-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+
+@media (min-width: 1100px) {
+  .farm-accounting-light .fa-chart-row {
+    grid-template-columns: 3fr 2fr;
+    gap: 0;
+  }
+
+  .farm-accounting-light .fa-chart-wide {
+    border-right: 1px solid hsl(214 32% 90%);
+    padding-right: 12px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .farm-accounting-light .fa-chart-wide {
+    border-bottom: 1px solid hsl(214 32% 90%);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+}
+
+.farm-accounting-light .fa-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.farm-accounting-light .fa-card-pad0 {
+  padding: 0;
+  margin-top: 0;
+}
+
+.farm-accounting-light .fa-card-head {
+  padding: 0 0 10px;
+}
+
+.farm-accounting-light .fa-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: hsl(222 47% 11%);
+}
+
+.farm-accounting-light .fa-card-desc {
+  font-size: 11px;
+  color: hsl(215 16% 45%);
+  margin-top: 2px;
+}
+
+.farm-accounting-light .fa-chart-wide .fa-card-head,
+.farm-accounting-light .fa-chart-narrow .fa-card-head {
+  padding-bottom: 6px;
+}
+
+.farm-accounting-light .fa-chart-narrow {
+  padding-left: 0;
+}
+
+@media (min-width: 1100px) {
+  .farm-accounting-light .fa-chart-narrow {
+    padding-left: 12px;
+  }
+}
+
+.farm-accounting-light .fa-chart-box {
+  height: 260px;
+  padding: 4px 0 12px;
+  position: relative;
+}
+
+.farm-accounting-light .fa-chart-pie {
+  height: 180px;
+}
+
+.farm-accounting-light .fa-chart-area {
+  height: 160px;
+}
+
+.farm-accounting-light .fa-pie-wrap {
+  padding: 0 12px 12px;
+}
+
+.farm-accounting-light .fa-empty-pie {
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(215 16% 55%);
+  font-size: 13px;
+}
+
+.farm-accounting-light .fa-pie-legend {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.farm-accounting-light .fa-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.farm-accounting-light .fa-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.farm-accounting-light .fa-legend-name {
+  flex: 1;
+  color: hsl(215 19% 35%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.farm-accounting-light .fa-legend-val {
+  font-weight: 600;
+  color: hsl(222 47% 15%);
+}
+
+.farm-accounting-light .fa-blurb {
+  font-size: 12px;
+  color: hsl(215 16% 40%);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.farm-accounting-light .fa-table-wrap {
+  overflow-x: auto;
+}
+
+.farm-accounting-light .fa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.farm-accounting-light .fa-table thead tr {
+  border-bottom: 1px solid hsl(214 32% 91%);
+  background: hsl(210 40% 98%);
+}
+
+.farm-accounting-light .fa-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(215 16% 45%);
+}
+
+.farm-accounting-light .fa-th-num {
+  text-align: right;
+}
+
+.farm-accounting-light .fa-tr:hover {
+  background: hsl(210 40% 99%);
+}
+
+.farm-accounting-light .fa-td {
+  padding: 10px 14px;
+  color: hsl(215 19% 35%);
+  border-bottom: 1px solid hsl(214 32% 94%);
+  vertical-align: middle;
+}
+
+.farm-accounting-light .fa-td-desc {
+  padding: 10px 14px;
+  color: hsl(215 16% 38%);
+  max-width: 220px;
+  border-bottom: 1px solid hsl(214 32% 94%);
+}
+
+.farm-accounting-light .fa-td-num {
+  text-align: right;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid hsl(214 32% 94%);
+}
+
+.farm-accounting-light .fa-num-rev {
+  color: #047857;
+}
+.farm-accounting-light .fa-num-exp {
+  color: #b91c1c;
+}
+
+.farm-accounting-light .fa-td-empty {
+  text-align: center;
+  padding: 36px 16px !important;
+  color: hsl(215 16% 55%) !important;
+  border: none !important;
+}
+
+.farm-accounting-light .fa-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.farm-accounting-light .fa-badge-rev {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.farm-accounting-light .fa-badge-exp {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+[data-theme="light"] .farm-accounting-light {
+  background: #fff;
+  border: none;
+}
+
+/* SACCO Accounting tab — same sheet treatment (no section-card boxes) */
+.sacco-accounting-sheet {
+  background: var(--bg-primary, #fff);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sacco-accounting-section {
+  padding: 16px 0;
+  border-bottom: 1px solid hsl(214 32% 88%);
+}
+
+.sacco-accounting-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sacco-accounting-kpis .kpi-card {
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  border-left: 3px solid hsl(214 32% 82%);
+  background: hsl(210 40% 99%);
+}
+
+.sacco-accounting-kpis .kpi-card.gold-border {
+  border-left-color: hsl(43 72% 48%);
+}
+
+.sacco-accounting-kpis .kpi-card.red-border {
+  border-left-color: hsl(0 72% 45%);
+}

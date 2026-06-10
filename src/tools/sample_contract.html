@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green coffee dispatch — DOM-2026-TEST</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&family=Inter:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px;
+            background: #fff;
+            border: 1px solid #eee;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #5d4037;
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            letter-spacing: 2px;
+            color: #5d4037;
+            text-transform: uppercase;
+        }
+
+        .contract-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #5d4037;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        th {
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .highlight {
+            font-weight: 700;
+            color: #000;
+        }
+
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+        }
+
+        .signature-box {
+            width: 45%;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+
+        .seal {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #5d4037;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 10px;
+            color: #5d4037;
+            opacity: 0.6;
+            transform: rotate(-15deg);
+            position: absolute;
+            right: 150px;
+            bottom: 100px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+        }
+
+        .handwritten {
+            font-family: 'Dancing Script', cursive;
+            /* Fallback to a serif if not loaded */
+            font-size: 24px;
+            color: #003366;
+            margin-bottom: -10px;
+        }
+    </style>
+    <!-- Adding a cursive font for the signature -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Dispatch note 2026/001</h1>
+        <p>Domestic transfer — hulled green coffee to buyer / partner site</p>
+    </div>
+
+    <div class="contract-info">
+        <div>
+            <strong>Dispatch ID:</strong> DOM-2026-TEST<br>
+            <strong>Date:</strong> February 20, 2026
+        </div>
+        <div style="text-align: right;">
+            <strong>Receiver:</strong> Partner farm (hulling &amp; storage)<br>
+            <strong>Destination:</strong> Domestic buyer / partner site
+        </div>
+    </div>
+
+    <div class="section-title">1. Product Specification</div>
+    <table>
+        <tr>
+            <th>Commodity</th>
+            <th>Variety</th>
+            <th>Grade / Quality</th>
+        </tr>
+        <tr>
+            <td class="highlight">Uganda Arabica Coffee</td>
+            <td class="highlight">SL28 / SL34</td>
+            <td class="highlight">Grade AA (Screen 17/18)</td>
+        </tr>
+    </table>
+
+    <div class="section-title">2. Quantity &amp; dispatch</div>
+    <table>
+        <tr>
+            <th>Net Weight</th>
+            <th>Packaging</th>
+            <th>Route</th>
+            <th>Dispatch date</th>
+        </tr>
+        <tr>
+            <td class="highlight">18,400 KG</td>
+            <td class="highlight">Bulk bags (road)</td>
+            <td class="highlight">Estate → domestic buyer site</td>
+            <td class="highlight">2026-03-22</td>
+        </tr>
+    </table>
+
+    <div class="section-title">3. Pricing &amp; terms</div>
+    <table>
+        <tr>
+            <th>Unit Price</th>
+            <th>Total value</th>
+            <th>Terms</th>
+        </tr>
+        <tr>
+            <td class="highlight">UGX 10,200 / KG</td>
+            <td class="highlight" style="font-size: 18px; color: #5d4037;">UGX 187,680,000</td>
+            <td class="highlight">Domestic · ex-estate</td>
+        </tr>
+    </table>
+
+    <div class="section-title">4. Signatures</div>
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="handwritten">J. Mukasa</div>
+            <strong>Partner farm (domestic)</strong><br>
+            Receiver
+        </div>
+        <div class="signature-box">
+            <div style="height: 40px;"></div>
+            <strong>Coffee Estate OS</strong><br>
+            Authorised Representative (Seller)
+        </div>
+    </div>
+
+    <div class="seal">
+        CERTIFIED<br>QUALITY<br>TESTED
+    </div>
+
+</body>
+
+</html>

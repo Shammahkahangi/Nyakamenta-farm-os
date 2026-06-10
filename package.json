@@ -1,0 +1,80 @@
+{
+    "name": "coffee-estate-os",
+    "version": "1.0.0",
+    "description": "Coffee Estate Operations Intelligence System — Native desktop platform for a 150-acre Arabica estate in Uganda.",
+    "main": "src/main/main.js",
+    "author": "Visionatedigital",
+    "private": true,
+    "scripts": {
+        "start": "electron .",
+        "watch": "nodemon",
+        "dev": "nodemon --exec \"electron . --inspect\"",
+        "rebuild:node": "npm rebuild better-sqlite3",
+        "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
+        "prestart": "npm run rebuild:electron",
+        "prewatch": "npm run rebuild:electron",
+        "predev": "npm run rebuild:electron",
+        "preweb": "npm run rebuild:node",
+        "web": "node server.js",
+        "create-user": "node scripts/create-web-user.cjs",
+        "import-workforce-salary": "node scripts/import-salary-workforce.cjs",
+        "import-payroll-salary": "node scripts/import-salary-payroll.cjs",
+        "set-role": "node scripts/set-estate-role.cjs",
+        "apply-invoice-blocks": "node scripts/apply-invoice-blocks.cjs",
+        "dev-local": "concurrently \"npm run web\" \"set ELECTRON_START_URL=http://localhost:3000&& electron .\"",
+        "build": "electron-builder build --win",
+        "postinstall": "npm run rebuild:node",
+        "predev-local": "npm run rebuild:node"
+    },
+    "devDependencies": {
+        "@electron/rebuild": "^4.0.4",
+        "concurrently": "^9.2.1",
+        "electron": "^29.0.0",
+        "electron-builder": "^24.9.1",
+        "nodemon": "^3.1.14"
+    },
+    "build": {
+        "appId": "com.visionatedigital.coffeestateos",
+        "productName": "Coffee Estate OS",
+        "win": {
+            "target": "nsis",
+            "icon": "assets/Golden agricultural logo design.png",
+            "signingHashAlgorithms": null,
+            "certificateFile": null
+        },
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "src/**/*",
+            "public/**/*",
+            "assets/**/*",
+            "styles/**/*",
+            "data/**/*",
+            ".env",
+            "package.json",
+            "node_modules/chart.js/**/*",
+            "node_modules/@kurkle/**/*",
+            "node_modules/xlsx/**/*"
+        ]
+    },
+    "keywords": [
+        "coffee",
+        "estate",
+        "operations",
+        "ERP",
+        "Uganda"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.97.0",
+        "better-sqlite3": "^12.6.2",
+        "chart.js": "^4.5.1",
+        "dotenv": "^17.3.1",
+        "express": "^5.1.0",
+        "pdf-parse": "^2.4.5",
+        "xlsx": "^0.18.5"
+    }
+}
