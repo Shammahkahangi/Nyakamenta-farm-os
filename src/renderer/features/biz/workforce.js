@@ -162,11 +162,16 @@ function openEditWorkerModal(worker, onSaved) {
           <div id="wf-note-list" style="max-height:180px;overflow-y:auto;"></div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="wf-edit-cancel">Cancel</button>
-        <button class="btn btn-primary" id="wf-edit-save">
-          <span class="material-symbols-outlined">save</span> Save changes
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <button class="btn btn-ghost" id="wf-edit-delete" style="color:var(--red-text, #ef4444); border-color:rgba(239, 68, 68, 0.2); background:rgba(239, 68, 68, 0.05); display:flex; align-items:center; gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">delete</span> Delete worker
         </button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost" id="wf-edit-cancel">Cancel</button>
+          <button class="btn btn-primary" id="wf-edit-save">
+            <span class="material-symbols-outlined">save</span> Save changes
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -198,6 +203,22 @@ function openEditWorkerModal(worker, onSaved) {
   const close = () => document.body.removeChild(backdrop);
   backdrop.querySelector('.modal-close').addEventListener('click', close);
   backdrop.querySelector('#wf-edit-cancel').addEventListener('click', close);
+  backdrop.querySelector('#wf-edit-delete').addEventListener('click', async () => {
+    const name = backdrop.querySelector('#wf-edit-name').value.trim();
+    if (!confirm(`Are you sure you want to delete ${name}? This will permanently remove this employee record, delete all their private notes, and unlink them from the SACCO roster.`)) {
+      return;
+    }
+    try {
+      await dataService.deleteWorker(wid);
+      close();
+      showToast(`Staff deleted: ${name}.`);
+      if (onSaved) onSaved();
+    } catch (err) {
+      const errEl = backdrop.querySelector('#wf-edit-error');
+      errEl.style.display = 'block';
+      errEl.textContent = `Error deleting worker: ${err.message || String(err)}`;
+    }
+  });
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) close();
   });

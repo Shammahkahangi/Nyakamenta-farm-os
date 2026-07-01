@@ -195,6 +195,14 @@ function ensureLogbookTables() {
         );
         CREATE INDEX IF NOT EXISTS idx_logbook_attachments_parent
             ON logbook_attachments(parent_type, parent_id);
+
+        CREATE TABLE IF NOT EXISTS logbook_minute_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            minute_id INTEGER NOT NULL,
+            note_text TEXT NOT NULL,
+            created_at TEXT,
+            FOREIGN KEY(minute_id) REFERENCES logbook_minutes(id) ON DELETE CASCADE
+        );
     `);
 }
 

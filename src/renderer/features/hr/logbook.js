@@ -5,14 +5,40 @@
 // ============================================================
 import { dataService } from '../../services/dataService.js';
 import { showToast } from '../../utils/toast.js';
-import { isOwnerOrAdmin } from '../../services/estateRole.js';
+import { isOwnerOrAdmin, getEstateRole } from '../../services/estateRole.js';
+import { getEstateApi } from '../../services/estateApi.js';
+
+
+function currentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function fmtMonth(s) {
+  if (!s) return '—';
+  const parts = s.split('-');
+  if (parts.length >= 2) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const date = new Date(year, monthIndex, 1);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    }
+  }
+  return esc(s);
+}
 
 /**
- * Admin & owner users see the Logbook as a read-only review of what the manager
- * wrote. No Add/Edit/Delete/Done/Reopen/Resolve controls — only the information.
+ * Owner on web sees the Logbook as a read-only review of what the manager/admin
+ * wrote. Admin (e.g. Frank) and Manager roles can add/edit/delete logbook entries.
+ * Desktop app (Electron) is never read-only.
  */
 function isReadOnly() {
-  return isOwnerOrAdmin();
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    return false;
+  }
+  const role = getEstateRole();
+  return !(role === 'manager' || role === 'admin');
 }
 
 function esc(s) {
@@ -25,6 +51,79 @@ function esc(s) {
 
 function escAttr(s) {
   return esc(s);
+}
+
+function parseInlineMarkdown(text) {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+}
+
+function markdownToHtmlForWord(md) {
+  if (!md) return '';
+  const lines = md.split('\n');
+  const result = [];
+  let inList = false;
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) {
+      if (inList) {
+        result.push('</ul>');
+        inList = false;
+      }
+      continue;
+    }
+    
+    // Headings
+    if (line.startsWith('### ')) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h3>${esc(line.slice(4))}</h3>`);
+      continue;
+    }
+    if (line.startsWith('## ')) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h2>${esc(line.slice(3))}</h2>`);
+      continue;
+    }
+    if (line.startsWith('# ')) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h1>${esc(line.slice(2))}</h1>`);
+      continue;
+    }
+    
+    // Bullet lists
+    if (line.startsWith('- ') || line.startsWith('* ') || line.startsWith('• ')) {
+      if (!inList) {
+        result.push('<ul>');
+        inList = true;
+      }
+      result.push(`<li>${parseInlineMarkdown(line.slice(2))}</li>`);
+      continue;
+    }
+    
+    // Ordered lists
+    const matchNumbered = line.match(/^(\d+)\.\s+(.+)$/);
+    if (matchNumbered) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<p><strong>${matchNumbered[1]}.</strong> ${parseInlineMarkdown(matchNumbered[2])}</p>`);
+      continue;
+    }
+    
+    // Regular paragraph
+    if (inList) {
+      result.push('</ul>');
+      inList = false;
+    }
+    result.push(`<p>${parseInlineMarkdown(line)}</p>`);
+  }
+  
+  if (inList) {
+    result.push('</ul>');
+  }
+  
+  return result.join('\n');
 }
 
 function today() {
@@ -411,27 +510,22 @@ function pendingRowHtml(pf, index) {
 function openAddMinuteModal(existing, onSaved) {
   const isEdit = !!existing;
   const m = existing || {};
+  let initialMonth = m.meeting_date || currentMonth();
+  if (initialMonth.length > 7) {
+    initialMonth = initialMonth.slice(0, 7);
+  }
   const { backdrop, close } = mountModal(`
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">${isEdit ? 'Edit minutes' : 'New meeting / field notes'}</span>
+        <span class="modal-title">${isEdit ? 'Edit meeting minutes' : 'New meeting minutes'}</span>
         <button class="modal-close"><span class="material-symbols-outlined">close</span></button>
       </div>
       <div class="modal-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input type="date" class="form-input" id="lg-min-date" value="${escAttr(m.meeting_date || today())}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Title / subject</label>
-            <input type="text" class="form-input" id="lg-min-title" value="${escAttr(m.title || '')}" placeholder="e.g. Weekly field walk">
-          </div>
-        </div>
         <div class="form-group">
-          <label class="form-label">Topics discussed</label>
-          <textarea class="form-input" id="lg-min-topics" rows="4" placeholder="What was discussed…">${esc(m.topics || '')}</textarea>
+          <label class="form-label">Month of Meeting</label>
+          <input type="month" class="form-input" id="lg-min-date" value="${escAttr(initialMonth)}">
         </div>
+
         <div class="form-group">
           <label class="form-label">Action items</label>
           <textarea class="form-input" id="lg-min-actions" rows="3" placeholder="Who will do what, by when…">${esc(m.action_items || '')}</textarea>
@@ -562,9 +656,10 @@ function openAddMinuteModal(existing, onSaved) {
     const origText = saveBtn.innerHTML;
     try {
       const payload = {
-        meeting_date: backdrop.querySelector('#lg-min-date').value || today(),
-        title: backdrop.querySelector('#lg-min-title').value.trim() || null,
-        topics: backdrop.querySelector('#lg-min-topics').value.trim() || null,
+        meeting_date: backdrop.querySelector('#lg-min-date').value || currentMonth(),
+        title: m.title || null,
+        attendees: m.attendees || null,
+        topics: m.topics || null,
         action_items: backdrop.querySelector('#lg-min-actions').value.trim() || null,
       };
       let parentId;
@@ -612,6 +707,7 @@ async function renderMinutes(container) {
   const minutes = await dataService.getLogbookMinutes();
 
   const attsByMinute = new Map();
+  const notesByMinute = new Map();
   await Promise.all(
     minutes.map(async (m) => {
       try {
@@ -620,6 +716,12 @@ async function renderMinutes(container) {
       } catch {
         attsByMinute.set(Number(m.id), []);
       }
+      try {
+        const notes = await dataService.getMinuteNotes(m.id);
+        notesByMinute.set(Number(m.id), notes || []);
+      } catch {
+        notesByMinute.set(Number(m.id), []);
+      }
     })
   );
 
@@ -627,6 +729,7 @@ async function renderMinutes(container) {
     ? minutes
         .map((m) => {
           const atts = attsByMinute.get(Number(m.id)) || [];
+          const notes = notesByMinute.get(Number(m.id)) || [];
           const attSection = atts.length
             ? `<div style="margin-top:10px;">
                  <div class="form-label" style="font-size:11px;">Attachments (${atts.length})</div>
@@ -649,25 +752,49 @@ async function renderMinutes(container) {
           <div class="section-card" style="padding:14px 16px;margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
               <div>
-                <div class="strong">${esc(m.title || 'Meeting')} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">— ${fmtDate(m.meeting_date)}</span></div>
+                <div class="strong">${esc(m.title || `${fmtMonth(m.meeting_date)} Meeting`)}</div>
               </div>
-              ${
-                review
-                  ? ''
-                  : `<div style="display:flex;gap:6px;flex-shrink:0;">
-                <button class="btn btn-ghost btn-sm" data-edit-min="${m.id}"><span class="material-symbols-outlined" style="font-size:14px;">edit</span> Edit</button>
-                <button class="btn btn-ghost btn-sm" data-delete-min="${m.id}" title="Delete"><span class="material-symbols-outlined" style="font-size:14px;">delete</span></button>
-              </div>`
-              }
+              <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">
+                <button class="btn btn-ghost btn-sm lg-min-analyze" data-mid="${m.id}" style="color:var(--gold-text);display:inline-flex;align-items:center;gap:4px;font-weight:600;padding:2px 8px;height:auto;min-width:0;"><span class="material-symbols-outlined" style="font-size:15px;color:var(--gold-text);">analytics</span> Analyze &amp; Export</button>
+                ${
+                  review
+                    ? ''
+                    : `
+                  <button class="btn btn-ghost btn-sm" data-edit-min="${m.id}"><span class="material-symbols-outlined" style="font-size:14px;">edit</span> Edit</button>
+                  <button class="btn btn-ghost btn-sm" data-delete-min="${m.id}" title="Delete"><span class="material-symbols-outlined" style="font-size:14px;">delete</span></button>
+                `
+                }
+              </div>
             </div>
-            ${
-              m.topics
-                ? `<div style="margin-top:8px;"><div class="form-label" style="font-size:11px;">Topics</div><div style="white-space:pre-wrap;font-size:12px;">${esc(m.topics)}</div></div>`
-                : ''
-            }
+            
+            <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border-subtle);">
+              <div class="form-label" style="font-size:11px; font-weight:600; margin-bottom:6px; color:var(--gold-text);">Meeting Notes & Discussions</div>
+              <div class="lg-min-notes-list" data-mid="${m.id}" style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+                ${notes.map(n => `
+                  <div class="lg-note-item" data-nid="${n.id}" style="display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; padding:6px 10px; background:var(--bg-surface-subtle); border-radius:6px; border:1px solid var(--border-subtle);">
+                    <div class="lg-note-text-display" style="flex:1; min-width:0; word-break:break-word; color:var(--text-primary);">${esc(n.note_text)}</div>
+                    ${review ? '' : `
+                      <div style="display:flex; gap:6px; flex-shrink:0;">
+                        <button type="button" class="btn btn-ghost btn-sm lg-note-edit" data-nid="${n.id}" data-mid="${m.id}" title="Edit note" style="padding:2px; height:auto; min-width:0;"><span class="material-symbols-outlined" style="font-size:14px;">edit</span></button>
+                        <button type="button" class="btn btn-ghost btn-sm lg-note-del" data-nid="${n.id}" data-mid="${m.id}" title="Delete note" style="padding:2px; height:auto; min-width:0;"><span class="material-symbols-outlined" style="font-size:14px; color:var(--red-text);">delete</span></button>
+                      </div>
+                    `}
+                  </div>
+                `).join('') || '<div style="font-size:11px; color:var(--text-muted); font-style:italic;">No notes taken yet.</div>'}
+              </div>
+              ${review ? '' : `
+                <div class="lg-note-add-form" style="display:flex; gap:6px; margin-top:8px;">
+                  <input type="text" class="form-input lg-new-note-input" data-mid="${m.id}" placeholder="Type a meeting note..." style="font-size:12px; padding:6px 10px; height:32px; flex:1;" />
+                  <button type="button" class="btn btn-primary btn-sm lg-new-note-add" data-mid="${m.id}" style="padding:0 12px; height:32px; display:flex; align-items:center; gap:4px; font-size:12px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">add</span> Add
+                  </button>
+                </div>
+              `}
+            </div>
+
             ${
               m.action_items
-                ? `<div style="margin-top:8px;"><div class="form-label" style="font-size:11px;">Action items</div><div style="white-space:pre-wrap;font-size:12px;">${esc(m.action_items)}</div></div>`
+                ? `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-subtle);"><div class="form-label" style="font-size:11px; font-weight:600;">Action items</div><div style="white-space:pre-wrap;font-size:12px; color:var(--text-secondary);">${esc(m.action_items)}</div></div>`
                 : ''
             }
             ${attSection}
@@ -677,7 +804,7 @@ async function renderMinutes(container) {
     : `<div class="section-card" style="padding:24px;text-align:center;color:var(--text-muted);">${
         review
           ? 'No meeting notes have been posted yet.'
-          : 'No meeting notes yet. Use <strong>New entry</strong> to record a meeting or field walk.'
+          : 'No meeting notes yet. Use <strong>New entry</strong> to record a meeting.'
       }</div>`;
 
   container.innerHTML = `
@@ -686,8 +813,8 @@ async function renderMinutes(container) {
         <div class="strong">Meeting minutes &amp; field notes</div>
         <div style="font-size:11px;color:var(--text-muted);">${
           review
-            ? 'Chronological record of meetings, field walks, and any documents the manager attached.'
-            : 'Private record for the manager and owner. Keep entries short — bullets are fine.'
+            ? 'Chronological record of monthly meetings, attendees, and meeting notes/action items.'
+            : 'Record monthly meetings here. Frank can dynamically type and add notes to any meeting inline.'
         }</div>
       </div>
       ${review ? '' : '<button class="btn btn-primary" id="lg-min-add"><span class="material-symbols-outlined">edit_note</span> New entry</button>'}
@@ -698,6 +825,21 @@ async function renderMinutes(container) {
   if (minutesAbort) minutesAbort.abort();
   minutesAbort = new AbortController();
   const { signal } = minutesAbort;
+
+  container.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      const input = e.target.closest('.lg-new-note-input');
+      if (input && container.contains(input)) {
+        e.preventDefault();
+        const mid = Number(input.dataset.mid);
+        const txt = input.value.trim();
+        if (!txt) return;
+        await dataService.addMinuteNote({ minuteId: mid, noteText: txt });
+        showToast('Note added.');
+        await renderMinutes(container);
+      }
+    }
+  }, { signal });
 
   container.addEventListener(
     'click',
@@ -710,6 +852,225 @@ async function renderMinutes(container) {
         if (att) openAttachment(att);
         return;
       }
+
+      const analyzeBtn = e.target.closest('.lg-min-analyze');
+      if (analyzeBtn && container.contains(analyzeBtn)) {
+        const mid = Number(analyzeBtn.dataset.mid);
+        const m = minutes.find((x) => Number(x.id) === mid);
+        if (!m) return;
+        
+        analyzeBtn.disabled = true;
+        const origText = analyzeBtn.innerHTML;
+        analyzeBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;animation:spin 1s linear infinite;color:var(--gold-text);">progress_activity</span> Analyzing…`;
+        
+        try {
+          const notes = await dataService.getMinuteNotes(mid);
+          if (!notes.length && !m.action_items) {
+            showToast('No notes or action items found to analyze.', { error: true });
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = origText;
+            return;
+          }
+
+          const prompt = `
+You are a senior agricultural consultant and operations auditor. Analyze the following meeting minutes for Nyakamenta Coffee Estate (Month: ${fmtMonth(m.meeting_date)}).
+
+Meeting details:
+- Title: ${m.title || `${fmtMonth(m.meeting_date)} Meeting`}
+- Action items defined: ${m.action_items || 'None specified'}
+
+Notes recorded during the meeting:
+${notes.map((n, i) => `${i + 1}. ${n.note_text}`).join('\n')}
+
+Please generate a professional Executive Meeting Minutes & Operations Analysis Report.
+Your response should be in clean Markdown format with the following sections:
+1. Executive Summary (a concise summary of the meeting highlights and overall status)
+2. Operations Analysis & Key Themes (analyze the notes, operational concerns, field walks, and crop status)
+3. Decisions Made
+4. Action Items & Timelines (structure the action items clearly, detailing priorities or timelines)
+5. Strategic Recommendations (suggest operations improvement recommendations based on the discussions)
+
+Format your output clearly with Markdown headings (#, ##, ###) and lists. Keep it professional, detailed, and formal. Do not include raw HTML wrapper elements.
+`;
+
+          const res = await getEstateApi().openAIChat({ messages: [{ role: 'user', content: prompt }] });
+          if (res.error || !res.reply) {
+            throw new Error(res.message || 'Failed to get a response from OpenAI. Check your API key in .env.');
+          }
+
+          const aiMarkdown = res.reply;
+          const htmlContent = `
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="utf-8">
+  <title>Nyakamenta Coffee Estate - Meeting Minutes Report</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      padding: 40px;
+    }
+    h1 {
+      font-size: 22px;
+      color: #1b4332;
+      border-bottom: 2px solid #2d6a4f;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    h2 {
+      font-size: 16px;
+      color: #2d6a4f;
+      margin-top: 28px;
+      margin-bottom: 12px;
+      border-bottom: 1px dashed #40916c;
+      padding-bottom: 4px;
+      font-weight: bold;
+    }
+    h3 {
+      font-size: 13px;
+      color: #40916c;
+      margin-top: 18px;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    p {
+      font-size: 11px;
+      margin: 0 0 10px 0;
+      color: #495057;
+    }
+    ul, ol {
+      margin: 8px 0 16px 20px;
+      padding: 0;
+    }
+    li {
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: #495057;
+    }
+    .meta-box {
+      background-color: #f4f9f4;
+      border: 1px solid #d8f3dc;
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    .meta-title {
+      font-weight: bold;
+      color: #1b4332;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .meta-grid {
+      display: table;
+      width: 100%;
+    }
+    .meta-row {
+      display: table-row;
+    }
+    .meta-cell {
+      display: table-cell;
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    .meta-cell.label {
+      font-weight: bold;
+      width: 120px;
+      color: #2d6a4f;
+    }
+  </style>
+</head>
+<body>
+  <h1>Nyakamenta Coffee Estate</h1>
+  <div class="meta-box">
+    <div class="meta-title">Operations Analysis &amp; Meeting Report</div>
+    <div class="meta-grid">
+      <div class="meta-row">
+        <div class="meta-cell label">Meeting Month:</div>
+        <div class="meta-cell">${fmtMonth(m.meeting_date)}</div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-cell label">Generated At:</div>
+        <div class="meta-cell">${new Date().toLocaleString('en-GB')}</div>
+      </div>
+    </div>
+  </div>
+  
+  ${markdownToHtmlForWord(aiMarkdown)}
+</body>
+</html>
+`;
+
+          const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Meeting_Minutes_Analysis_${m.meeting_date || 'Month'}.doc`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          showToast('Report generated & downloaded.');
+        } catch (err) {
+          console.error(err);
+          showToast(err.message || 'Error running analysis.', { error: true });
+        } finally {
+          analyzeBtn.disabled = false;
+          analyzeBtn.innerHTML = origText;
+        }
+        return;
+      }
+      
+      const noteAddBtn = e.target.closest('.lg-new-note-add');
+      if (noteAddBtn && container.contains(noteAddBtn)) {
+        const mid = Number(noteAddBtn.dataset.mid);
+        const card = noteAddBtn.closest('.section-card');
+        const input = card.querySelector(`.lg-new-note-input[data-mid="${mid}"]`);
+        const txt = input.value.trim();
+        if (!txt) return;
+        await dataService.addMinuteNote({ minuteId: mid, noteText: txt });
+        showToast('Note added.');
+        await renderMinutes(container);
+        return;
+      }
+
+      const noteEditBtn = e.target.closest('.lg-note-edit');
+      if (noteEditBtn && container.contains(noteEditBtn)) {
+        const nid = Number(noteEditBtn.dataset.nid);
+        const mid = Number(noteEditBtn.dataset.mid);
+        const notes = notesByMinute.get(mid) || [];
+        const note = notes.find(n => Number(n.id) === nid);
+        if (!note) return;
+        const newText = prompt('Edit note:', note.note_text);
+        if (newText !== null && newText.trim() !== '') {
+          await dataService.updateMinuteNote(nid, newText);
+          showToast('Note updated.');
+          await renderMinutes(container);
+        }
+        return;
+      }
+
+      const noteDelBtn = e.target.closest('.lg-note-del');
+      if (noteDelBtn && container.contains(noteDelBtn)) {
+        const nid = Number(noteDelBtn.dataset.nid);
+        if (!confirm('Delete this note?')) return;
+        await dataService.deleteMinuteNote(nid);
+        showToast('Note deleted.');
+        await renderMinutes(container);
+        return;
+      }
+
       if (review) return;
       const editBtn = e.target.closest('[data-edit-min]');
       if (editBtn && container.contains(editBtn)) {
@@ -719,7 +1080,7 @@ async function renderMinutes(container) {
       }
       const delBtn = e.target.closest('[data-delete-min]');
       if (delBtn && container.contains(delBtn)) {
-        if (!confirm('Delete this entry (and its attachments)?')) return;
+        if (!confirm('Delete this entry (and its attachments and notes)?')) return;
         const mid = Number(delBtn.dataset.deleteMin);
         try {
           const atts = await dataService.listLogbookAttachments('minute', mid);

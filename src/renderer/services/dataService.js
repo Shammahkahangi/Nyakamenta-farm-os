@@ -1089,6 +1089,20 @@ const dataService = {
         return run;
     },
 
+    async deleteWorker(id) {
+        const wid = Number(id);
+        if (!wid) return;
+        // 1. Remove or unlink from SACCO member list
+        await this.removeSaccoMemberFromWorkforce(wid);
+        // 2. Clear related worker notes
+        await getEstateApi().execute('DELETE FROM worker_notes WHERE worker_id = ?', [wid]);
+        // 3. Clear associations in logbook tasks and complaints
+        await getEstateApi().execute('UPDATE logbook_tasks SET worker_id = NULL WHERE worker_id = ?', [wid]);
+        await getEstateApi().execute('UPDATE logbook_complaints SET about_worker_id = NULL WHERE about_worker_id = ?', [wid]);
+        // 4. Delete the worker row itself
+        return await getEstateApi().execute('DELETE FROM workforce WHERE id = ?', [wid]);
+    },
+
     // ── Domestic dispatch (contracts row)
     async addContract({ id, buyer, destination, grade, netKg, pricePerKg, totalValue, status, etd }) {
         const run = await getEstateApi().execute(
@@ -2180,7 +2194,7 @@ const dataService = {
     /** Fetch a compact snapshot of the logbook so the AI can discuss it. */
     async _getLogbookSnapshotParts() {
         const api = getEstateApi();
-        const [tasks, minutes, complaints, workerNotes, attachments] = await Promise.all([
+        const [tasks, minutes, complaints, workerNotes, attachments, minuteNotes] = await Promise.all([
             this.getLogbookTasks().catch(() => []),
             this.getLogbookMinutes().catch(() => []),
             this.getLogbookComplaints().catch(() => []),
@@ -2201,18 +2215,30 @@ const dataService = {
                      LIMIT 150`
                 )
                 .catch(() => []),
+            api
+                .query(
+                    `SELECT * FROM logbook_minute_notes`
+                )
+                .catch(() => []),
         ]);
-        return { tasks, minutes, complaints, workerNotes, attachments };
+        return { tasks, minutes, complaints, workerNotes, attachments, minuteNotes };
     },
 
     /** Render the logbook into the compact text format used by buildAIContextSnapshot. */
-    _formatLogbookSection({ tasks, minutes, complaints, workerNotes, attachments }) {
+    _formatLogbookSection({ tasks, minutes, complaints, workerNotes, attachments, minuteNotes }) {
         const lines = [];
         const attsByParent = new Map();
         (attachments || []).forEach((a) => {
             const k = `${a.parent_type}:${a.parent_id}`;
             if (!attsByParent.has(k)) attsByParent.set(k, []);
             attsByParent.get(k).push(a);
+        });
+
+        const notesByMinute = new Map();
+        (minuteNotes || []).forEach((n) => {
+            const k = Number(n.minute_id);
+            if (!notesByMinute.has(k)) notesByMinute.set(k, []);
+            notesByMinute.get(k).push(n.note_text);
         });
 
         const openTasks = (tasks || []).filter((t) => t.status !== 'done' && t.status !== 'cancelled');
@@ -2251,8 +2277,10 @@ const dataService = {
                       .map((a) => a.file_name)
                       .join(', ')}${atts.length > 5 ? '…' : ''}]`
                 : '';
+            const notes = notesByMinute.get(Number(m.id)) || [];
+            const notesStr = notes.length ? ` — notes: ${notes.join('; ')}` : '';
             lines.push(
-                `  - ${m.meeting_date || '—'} · ${m.title || '(no title)'}${attList}${m.topics ? ` — topics: ${String(m.topics).slice(0, 200)}` : ''}${m.action_items ? ` — actions: ${String(m.action_items).slice(0, 200)}` : ''}`
+                `  - ${m.meeting_date || '—'} · ${m.title || '(no title)'}${attList}${m.attendees ? ` · attendees: ${m.attendees}` : ''}${notesStr}${m.action_items ? ` — actions: ${String(m.action_items).slice(0, 200)}` : ''}`
             );
         });
 
@@ -2705,6 +2733,32 @@ const dataService = {
     },
     async deleteLogbookMinute(id) {
         return await getEstateApi().execute(`DELETE FROM logbook_minutes WHERE id = ?`, [id]);
+    },
+
+    async getMinuteNotes(minuteId) {
+        return await getEstateApi().query(
+            `SELECT * FROM logbook_minute_notes WHERE minute_id = ? ORDER BY id ASC`,
+            [Number(minuteId)]
+        );
+    },
+    async addMinuteNote({ minuteId, noteText }) {
+        const now = new Date().toISOString();
+        return await getEstateApi().execute(
+            `INSERT INTO logbook_minute_notes (minute_id, note_text, created_at) VALUES (?, ?, ?)`,
+            [Number(minuteId), String(noteText).trim(), now]
+        );
+    },
+    async updateMinuteNote(id, noteText) {
+        return await getEstateApi().execute(
+            `UPDATE logbook_minute_notes SET note_text = ? WHERE id = ?`,
+            [String(noteText).trim(), Number(id)]
+        );
+    },
+    async deleteMinuteNote(id) {
+        return await getEstateApi().execute(
+            `DELETE FROM logbook_minute_notes WHERE id = ?`,
+            [Number(id)]
+        );
     },
 
     // ── Logbook: Worker notes (per-staff log) ─────────────────

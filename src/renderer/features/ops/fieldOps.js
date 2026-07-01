@@ -1,21 +1,17 @@
 // ============================================================
 // fieldOps.js — Field Operations Pillar
-// (Workforce · Irrigation · Soil & Fertility · Shade Trees · Stumping)
+// (Workforce · Irrigation · Soil & Fertility)
 // ============================================================
 import { renderWorkforce } from '../biz/workforce.js';
 import { renderMaintenanceRates } from './maintenanceRates.js';
 import { renderIrrigation } from './irrigation.js';
 import { renderSoil } from './soil.js';
-import { renderShade } from './shade.js';
-import { renderStumping } from './stumping.js';
 
 const TABS = [
   { id: 'workers', label: 'Workers', icon: 'group' },
   { id: 'maintenance', label: 'Maintenance', icon: 'home_repair_service' },
   { id: 'irrigation', label: 'Irrigation', icon: 'water_drop' },
   { id: 'soil', label: 'Fertilizer', icon: 'compost' },
-  { id: 'shade', label: 'Shade Trees', icon: 'forest' },
-  { id: 'stumping', label: 'Stumping', icon: 'content_cut' },
 ];
 
 let activeTab = 'workers';
@@ -47,8 +43,6 @@ export async function renderFieldOps(container) {
     if (tab === 'maintenance') await renderMaintenanceRates(tabContent);
     if (tab === 'irrigation') await renderIrrigation(tabContent);
     if (tab === 'soil') await renderSoil(tabContent);
-    if (tab === 'shade') await renderShade(tabContent);
-    if (tab === 'stumping') await renderStumping(tabContent);
   };
 
   container.querySelectorAll('.pillar-tab').forEach(btn => {
