@@ -1145,6 +1145,35 @@ function clearDispatchRegister() {
     })();
 }
 
+/** Remove farm ledger expenses/revenue and lodge/payroll sources that mirror into finance_items. */
+function clearFinanceLedger() {
+    if (!db) throw new Error('Database not initialized');
+    return db.transaction(() => {
+        const out = {};
+        const ordered = [
+            'lodge_payments',
+            'lodge_expenses',
+            'lodge_bookings',
+            'payroll_lines',
+            'payroll_runs',
+            'finance_items',
+        ];
+        for (const table of ordered) {
+            if (!tableExists(table)) {
+                out[table] = 0;
+                continue;
+            }
+            out[table] = execute(`DELETE FROM ${table}`).changes;
+            try {
+                execute('DELETE FROM sqlite_sequence WHERE name = ?', [table]);
+            } catch (_) {
+                /* ignore */
+            }
+        }
+        return out;
+    })();
+}
+
 module.exports = {
     initDB,
     query,
@@ -1152,6 +1181,7 @@ module.exports = {
     migrateFromMock,
     syncWithRemote,
     clearDispatchRegister,
+    clearFinanceLedger,
     distributeDefaultPlantsIfEmpty,
     importPayrollSeed,
     resetMaintenanceRatesToDefaults,

@@ -197,6 +197,27 @@ app.post('/api/admin/clear-dispatch', requireAuth, async (_req, res) => {
   }
 });
 
+/** Clear farm ledger (all finance_items), lodge bookings/payments, and payroll runs. */
+app.post('/api/admin/clear-expenses', requireAuth, async (_req, res) => {
+  try {
+    const local = db.clearFinanceLedger();
+    const remote = { finance_items: 0, skipped: !supabaseAdmin };
+    if (supabaseAdmin) {
+      const { data: fin, error } = await supabaseAdmin
+        .from('finance_items')
+        .delete()
+        .gte('id', 0)
+        .select('id');
+      if (error) throw new Error(`Supabase finance_items: ${error.message}`);
+      remote.finance_items = Array.isArray(fin) ? fin.length : 0;
+      remote.skipped = false;
+    }
+    res.json({ ok: true, local, remote });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 app.post('/api/payroll/import-seed', requireAuth, (req, res) => {
   try {
     const seedPath = path.join(__dirname, 'data/payroll_seed_shammah.json');

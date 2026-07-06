@@ -23,6 +23,7 @@
         "apply-invoice-blocks": "node scripts/apply-invoice-blocks.cjs",
         "supabase:clear": "node scripts/supabase-clear.cjs --fresh-start",
         "clear-dispatch": "node scripts/clear-dispatch.cjs",
+        "clear-expenses": "node scripts/clear-expenses.cjs",
         "dev-local": "concurrently \"npm run web\" \"set ELECTRON_START_URL=http://localhost:3000&& electron .\"",
         "build": "electron-builder build --win",
         "postinstall": "npm run rebuild:node",
