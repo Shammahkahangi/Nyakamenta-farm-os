@@ -21,6 +21,8 @@
         "import-payroll-salary": "node scripts/import-salary-payroll.cjs",
         "set-role": "node scripts/set-estate-role.cjs",
         "apply-invoice-blocks": "node scripts/apply-invoice-blocks.cjs",
+        "supabase:clear": "python scripts/supabase-clear.py --fresh-start",
+        "clear-dispatch": "python scripts/clear-dispatch.py",
         "dev-local": "concurrently \"npm run web\" \"set ELECTRON_START_URL=http://localhost:3000&& electron .\"",
         "build": "electron-builder build --win",
         "postinstall": "npm run rebuild:node",

@@ -29,6 +29,8 @@ const supabaseAnonKey =
 
 const isPlaceholderUrl = !supabaseUrl || supabaseUrl === 'https://your-project-id.supabase.co';
 let supabaseServer = null;
+let supabaseAdmin = null;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 if (supabaseUrl && supabaseAnonKey && !isPlaceholderUrl) {
   /** Longer timeout for flaky networks (default undici ~10s). */
   const fetchLong = (url, options = {}) => {
@@ -38,6 +40,11 @@ if (supabaseUrl && supabaseAnonKey && !isPlaceholderUrl) {
   };
   supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
     global: { fetch: fetchLong },
+  });
+}
+if (supabaseUrl && supabaseServiceKey && !isPlaceholderUrl) {
+  supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
@@ -162,6 +169,31 @@ app.post('/api/maintenance/reset-rates', requireAuth, (_req, res) => {
     res.json(out);
   } catch (e) {
     res.status(400).json({ error: e.message || String(e) });
+  }
+});
+
+/** Clear domestic dispatch register on server SQLite and mirrored Supabase rows. */
+app.post('/api/admin/clear-dispatch', requireAuth, async (_req, res) => {
+  try {
+    const local = db.clearDispatchRegister();
+    const remote = { contracts: 0, finance_items: 0, skipped: !supabaseAdmin };
+    if (supabaseAdmin) {
+      const { data: ctr, error: e1 } = await supabaseAdmin.from('contracts').delete().neq('id', '').select('id');
+      if (e1) throw new Error(`Supabase contracts: ${e1.message}`);
+      remote.contracts = Array.isArray(ctr) ? ctr.length : 0;
+
+      const { data: fin, error: e2 } = await supabaseAdmin
+        .from('finance_items')
+        .delete()
+        .ilike('description', '%Domestic dispatch%')
+        .select('id');
+      if (e2) throw new Error(`Supabase finance_items: ${e2.message}`);
+      remote.finance_items = Array.isArray(fin) ? fin.length : 0;
+      remote.skipped = false;
+    }
+    res.json({ ok: true, local, remote });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message || String(e) });
   }
 });
 

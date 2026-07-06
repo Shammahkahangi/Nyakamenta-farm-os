@@ -1124,12 +1124,34 @@ function importPayrollSeed(yearMonth, lines) {
     return runImport(yearMonth, lines);
 }
 
+/** Remove all domestic dispatch rows and mirrored farm ledger lines. */
+function clearDispatchRegister() {
+    if (!db) throw new Error('Database not initialized');
+    return db.transaction(() => {
+        let finance = 0;
+        try {
+            finance = execute(
+                `DELETE FROM finance_items
+                 WHERE source_module = 'dispatch_contract'
+                    OR description LIKE '%Domestic dispatch%'`
+            ).changes;
+        } catch (_) {
+            finance = execute(
+                `DELETE FROM finance_items WHERE description LIKE '%Domestic dispatch%'`
+            ).changes;
+        }
+        const contracts = execute('DELETE FROM contracts').changes;
+        return { contracts, finance };
+    })();
+}
+
 module.exports = {
     initDB,
     query,
     execute,
     migrateFromMock,
     syncWithRemote,
+    clearDispatchRegister,
     distributeDefaultPlantsIfEmpty,
     importPayrollSeed,
     resetMaintenanceRatesToDefaults,
