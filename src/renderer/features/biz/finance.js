@@ -22,17 +22,14 @@ let derivedFarmLedgerEnsured = false;
 
 const PIE_COLORS = ['#1e3a5f', '#2563eb', '#0ea5e9', '#38bdf8', '#7dd3fc', '#c7843a', '#d97706', '#f59e0b', '#16a34a', '#15803d'];
 
-/** Gateway-style farm financial reports (single-entry UGX ledger + SACCO loans where relevant). */
+/** Gateway-style farm financial reports (single-entry UGX ledger). */
 const ACCOUNTING_SUBTABS = [
   { id: 'overview', label: 'Financial Overview' },
   { id: 'general', label: 'General Report' },
   { id: 'income', label: 'Comprehensive Income' },
-  { id: 'position', label: 'Financial Position' },
   { id: 'cashflow', label: 'Cashflow Statement' },
-  { id: 'equity', label: 'Equity Statement' },
   { id: 'analysis', label: 'Financial Analysis' },
   { id: 'cashbook', label: 'Cash Book' },
-  { id: 'trial', label: 'Trial Balance' },
 ];
 
 const LEGACY_SUBTAB = {
@@ -44,6 +41,9 @@ const LEGACY_SUBTAB = {
   journal: 'cashbook',
   loans: 'overview',
   aging: 'overview',
+  position: 'overview',
+  equity: 'overview',
+  trial: 'cashbook',
 };
 
 function migrateLegacySubtab(id) {
@@ -147,7 +147,7 @@ function isoDateLocal(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Default period for Farm finance (overview KPIs, cash book, trial balance): YTD so payroll mirrors (month-end dates) aren’t hidden vs Owner Overview activity. */
+/** Default period for Farm finance (overview KPIs, cash book): YTD so payroll mirrors (month-end dates) aren’t hidden vs Owner Overview activity. */
 function defaultRangeYtd() {
   const d = new Date();
   return {
@@ -422,20 +422,6 @@ function loanLikeLedgerLine(row) {
   return /loan|borrowing|lending|overdraft|principal|credit\s*facility/.test(s);
 }
 
-function aggregateLoanRows(loans, repayments) {
-  const repBy = {};
-  for (const r of repayments) {
-    const lid = r.loan_id;
-    if (!lid) continue;
-    repBy[lid] = (repBy[lid] || 0) + Number(r.amount || 0);
-  }
-  return loans.map((lo) => {
-    const principal = Number(lo.principal ?? lo.amount ?? 0);
-    const repaid = repBy[lo.id] || 0;
-    return { ...lo, principal, repaid, outstanding: Math.max(0, principal - repaid) };
-  });
-}
-
 function escHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -530,38 +516,6 @@ function renderComprehensiveIncomeHtml(items, year) {
         <div class="fa-kpi-h">Net result (${year})</div>
         <div class="fa-kpi-v">${dataService.formatCurrency(Math.abs(net))}</div>
         <div class="fa-kpi-f fa-kpi-f-muted">${net >= 0 ? 'Net profit' : 'Net loss'}</div>
-      </div>
-    </div>
-  `;
-}
-
-function renderFinancialPositionHtml(summary, saccoOutstanding, totalAcres) {
-  const { totalRevenue, totalExpenses, netProfit } = summary;
-  const impliedCash = netProfit;
-  const netWorth = impliedCash - saccoOutstanding;
-  return `
-    ${reportBlurb(
-      'Simplified position from the single-entry farm ledger: no fixed-asset register. SACCO outstanding is shown as a liability proxy. Implied cash assumes opening balance zero and all lines settled.'
-    )}
-    <div class="fa-card fa-card-pad0">
-      <div class="fa-table-wrap">
-        <table class="fa-table">
-          <thead>
-            <tr><th>Line</th><th class="fa-th-num">UGX</th></tr>
-          </thead>
-          <tbody>
-            <tr class="fa-tr"><td class="fa-td">Cumulative farm revenue (all time)</td><td class="fa-td-num fa-num-rev">${dataService.formatCurrency(totalRevenue)}</td></tr>
-            <tr class="fa-tr"><td class="fa-td">Cumulative farm expenses (all time)</td><td class="fa-td-num fa-num-exp">${dataService.formatCurrency(totalExpenses)}</td></tr>
-            <tr class="fa-tr" style="font-weight:700;"><td class="fa-td">Retained result (ledger)</td><td class="fa-td-num">${dataService.formatCurrency(Math.abs(netProfit))} ${netProfit >= 0 ? '(profit)' : '(loss)'}</td></tr>
-            <tr class="fa-tr"><td class="fa-td">Implied net cash position (no opening balance)</td><td class="fa-td-num">${dataService.formatCurrency(impliedCash)}</td></tr>
-            <tr class="fa-tr"><td class="fa-td">Less: SACCO loans outstanding (staff)</td><td class="fa-td-num fa-num-exp">−${dataService.formatCurrency(saccoOutstanding)}</td></tr>
-            <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
-              <td class="fa-td">Approx. net farm position</td>
-              <td class="fa-td-num ${netWorth >= 0 ? 'fa-num-rev' : 'fa-num-exp'}">${dataService.formatCurrency(netWorth)}</td>
-            </tr>
-            <tr class="fa-tr"><td class="fa-td">Registered estate acreage (reference)</td><td class="fa-td-num">${totalAcres.toFixed(1)} ac</td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
   `;
@@ -668,48 +622,6 @@ function renderCashflowHtml(items, year) {
         <div class="fa-kpi-h">Net change in cash (${year})</div>
         <div class="fa-kpi-v">${dataService.formatCurrency(Math.abs(netChange))}</div>
         <div class="fa-kpi-f fa-kpi-f-muted">${netChange >= 0 ? 'Surplus' : 'Deficit'} (single-entry proxy)</div>
-      </div>
-    </div>
-  `;
-}
-
-function renderEquityHtml(items, year) {
-  const slice = itemsInYear(items, year);
-  let rev = 0;
-  let exp = 0;
-  for (const row of slice) {
-    const amt = Number(row.amount || 0);
-    if (row.type === 'Revenue') rev += amt;
-    else if (row.type === 'Expense') exp += amt;
-  }
-  const profit = rev - exp;
-  const allTime = items.reduce(
-    (acc, row) => {
-      const amt = Number(row.amount || 0);
-      if (row.type === 'Revenue') acc.rev += amt;
-      else if (row.type === 'Expense') acc.exp += amt;
-      return acc;
-    },
-    { rev: 0, exp: 0 }
-  );
-  const retained = allTime.rev - allTime.exp;
-
-  return `
-    ${reportBlurb('Owner equity movement implied by the ledger (no formal share capital). Opening balance assumed zero.')}
-    <div class="fa-card fa-card-pad0">
-      <div class="fa-table-wrap">
-        <table class="fa-table">
-          <thead><tr><th>Line</th><th class="fa-th-num">UGX</th></tr></thead>
-          <tbody>
-            <tr class="fa-tr"><td class="fa-td">Opening retained earnings (assumed)</td><td class="fa-td-num">0</td></tr>
-            <tr class="fa-tr"><td class="fa-td">Profit for ${year}</td><td class="fa-td-num ${profit >= 0 ? 'fa-num-rev' : 'fa-num-exp'}">${dataService.formatCurrency(Math.abs(profit))}</td></tr>
-            <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
-              <td class="fa-td">Closing retained earnings (${year})</td>
-              <td class="fa-td-num">${dataService.formatCurrency(profit)}</td>
-            </tr>
-            <tr class="fa-tr"><td class="fa-td" colspan="2" style="padding-top:12px;font-size:11px;color:var(--fa-text-2);">All-time cumulative retained result: ${dataService.formatCurrency(retained)}</td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
   `;
@@ -1068,92 +980,6 @@ function renderGeneralReportHtml({ items, contracts, blocks, batches, from, to }
       'Recent ledger entries',
       'No ledger entries in this period.'
     )}
-  `;
-}
-
-function renderTrialBalanceHtml(items) {
-  const revBy = {};
-  const expBy = {};
-  for (const row of items) {
-    const amt = Number(row.amount || 0);
-    const cat = row.category || 'Uncategorised';
-    if (row.type === 'Revenue') revBy[cat] = (revBy[cat] || 0) + amt;
-    else if (row.type === 'Expense') expBy[cat] = (expBy[cat] || 0) + amt;
-  }
-  const sumDr = Object.values(expBy).reduce((a, b) => a + b, 0);
-  const sumCr = Object.values(revBy).reduce((a, b) => a + b, 0);
-  const net = sumCr - sumDr;
-
-  const expRows = Object.keys(expBy)
-    .sort()
-    .map(
-      (cat) => `
-    <tr class="fa-tr">
-      <td class="fa-td">${escHtml(cat)}</td>
-      <td class="fa-td-num">${dataService.formatCurrency(expBy[cat])}</td>
-      <td class="fa-td-num">—</td>
-    </tr>`
-    )
-    .join('');
-  const revRows = Object.keys(revBy)
-    .sort()
-    .map(
-      (cat) => `
-    <tr class="fa-tr">
-      <td class="fa-td">${escHtml(cat)}</td>
-      <td class="fa-td-num">—</td>
-      <td class="fa-td-num fa-num-rev">${dataService.formatCurrency(revBy[cat])}</td>
-    </tr>`
-    )
-    .join('');
-
-  let balDr = 0;
-  let balCr = 0;
-  let balLabel = '';
-  if (net > 0) {
-    balLabel = 'Net profit (balancing)';
-    balDr = net;
-  } else if (net < 0) {
-    balLabel = 'Net loss (balancing)';
-    balCr = -net;
-  }
-
-  const totalDr = sumDr + balDr;
-  const totalCr = sumCr + balCr;
-
-  const balanceRow =
-    net === 0
-      ? ''
-      : `
-    <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
-      <td class="fa-td">${balLabel}</td>
-      <td class="fa-td-num">${balDr ? dataService.formatCurrency(balDr) : '—'}</td>
-      <td class="fa-td-num">${balCr ? dataService.formatCurrency(balCr) : '—'}</td>
-    </tr>`;
-
-  return `
-    ${reportBlurb(
-      'Single-entry trial balance: expenses as debits, revenue as credits. A balancing line closes to net profit or loss.'
-    )}
-    <div class="fa-card fa-card-pad0">
-      <div class="fa-table-wrap">
-        <table class="fa-table">
-          <thead>
-            <tr><th>Account (category)</th><th class="fa-th-num">Debit</th><th class="fa-th-num">Credit</th></tr>
-          </thead>
-          <tbody>
-            ${expRows}
-            ${revRows}
-            ${balanceRow}
-            <tr class="fa-tr" style="font-weight:700;">
-              <td class="fa-td">Totals</td>
-              <td class="fa-td-num">${dataService.formatCurrency(totalDr)}</td>
-              <td class="fa-td-num">${dataService.formatCurrency(totalCr)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   `;
 }
 
@@ -1584,9 +1410,7 @@ async function renderFinance(container) {
     const periodLabel =
       exportCtx.activeSub === 'income' ||
       exportCtx.activeSub === 'cashflow' ||
-      exportCtx.activeSub === 'equity' ||
-      exportCtx.activeSub === 'analysis' ||
-      exportCtx.activeSub === 'position'
+      exportCtx.activeSub === 'analysis'
         ? `Calendar year ${new Date().getFullYear()}`
         : formatRangeHint(from, to);
     try {
@@ -1617,9 +1441,7 @@ async function renderFinance(container) {
     const periodLabel =
       exportCtx.activeSub === 'income' ||
       exportCtx.activeSub === 'cashflow' ||
-      exportCtx.activeSub === 'equity' ||
-      exportCtx.activeSub === 'analysis' ||
-      exportCtx.activeSub === 'position'
+      exportCtx.activeSub === 'analysis'
         ? `Calendar year ${new Date().getFullYear()}`
         : formatRangeHint(from, to);
     const html = buildVisualReportExportHtml(panel, {
@@ -1733,16 +1555,12 @@ async function renderFinance(container) {
     }
 
     let items;
-    let loans;
-    let repayments;
     let blocks;
     let batches;
     let contracts;
     try {
-      [items, loans, repayments, blocks, batches, contracts] = await Promise.all([
+      [items, blocks, batches, contracts] = await Promise.all([
       dataService.getFinanceItems(),
-      dataService.getSaccoLoans().catch(() => []),
-      dataService.getSaccoRepayments().catch(() => []),
       dataService.getBlocks().catch(() => []),
       dataService.getBatches().catch(() => []),
       dataService.getContracts().catch(() => []),
@@ -1763,12 +1581,6 @@ async function renderFinance(container) {
     if (seq !== paintSeq) return;
 
     try {
-    const loansAug = aggregateLoanRows(loans, repayments);
-    const saccoOutstanding = loansAug.reduce((s, x) => s + x.outstanding, 0);
-    const financeSummary = await dataService.getFinanceSummary();
-    if (seq !== paintSeq) return;
-
-    const totalAcres = blocks.reduce((s, b) => s + Number(b.acres || 0), 0);
     const rf = overviewRange.from;
     const rt = overviewRange.to;
     const revP = sumInRange(items, rf, rt, 'Revenue');
@@ -1918,18 +1730,12 @@ async function renderFinance(container) {
       });
     } else if (activeSub === 'income') {
       bodyHtml = renderComprehensiveIncomeHtml(items, win.year);
-    } else if (activeSub === 'position') {
-      bodyHtml = renderFinancialPositionHtml(financeSummary, saccoOutstanding, totalAcres);
     } else if (activeSub === 'cashflow') {
       bodyHtml = renderCashflowHtml(items, win.year);
-    } else if (activeSub === 'equity') {
-      bodyHtml = renderEquityHtml(items, win.year);
     } else if (activeSub === 'analysis') {
       bodyHtml = renderAnalysisHtml(items, blocks, batches, win.year);
     } else if (activeSub === 'cashbook') {
       bodyHtml = renderCashBookHtml(items, rf, rt);
-    } else if (activeSub === 'trial') {
-      bodyHtml = renderTrialBalanceHtml(itemsWithDateInRange(items, rf, rt));
     }
 
     if (seq !== paintSeq) return;
@@ -1937,8 +1743,7 @@ async function renderFinance(container) {
     const showPeriodBar =
       activeSub === 'overview' ||
       activeSub === 'general' ||
-      activeSub === 'cashbook' ||
-      activeSub === 'trial';
+      activeSub === 'cashbook';
     const rangeBarHtml = showPeriodBar
       ? `
       <div class="fa-range-bar">
