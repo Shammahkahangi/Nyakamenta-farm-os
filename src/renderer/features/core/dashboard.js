@@ -399,10 +399,10 @@ async function renderDashboard(container) {
           <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px;">
             ${[
       { page: 'harvest-processing', icon: 'add_circle', label: 'Log Cherry Intake' },
-      { page: 'sales-finance', farmTab: 'finance', icon: 'receipt_long', label: 'Add Transaction' },
-      { page: 'sales-finance', farmTab: 'sales', icon: 'description', label: 'Domestic dispatch' },
+      { page: 'sales-finance', icon: 'receipt_long', label: 'Add Transaction' },
+      { page: 'sales-finance', accountingTab: 'general', icon: 'description', label: 'General report' },
     ].map(a => `
-              <button class="btn btn-ghost" data-nav="${a.page}" ${a.farmTab ? `data-farm-tab="${a.farmTab}"` : ''} ${a.intelTab ? `data-intel-tab="${a.intelTab}"` : ''} style="justify-content:flex-start;gap:10px;width:100%;text-align:left;">
+              <button class="btn btn-ghost" data-nav="${a.page}" ${a.farmTab ? `data-farm-tab="${a.farmTab}"` : ''} ${a.accountingTab ? `data-accounting-tab="${a.accountingTab}"` : ''} ${a.intelTab ? `data-intel-tab="${a.intelTab}"` : ''} style="justify-content:flex-start;gap:10px;width:100%;text-align:left;">
                 <span class="material-symbols-outlined" style="font-size:16px;color:var(--text-muted);">${a.icon}</span>
                 ${a.label}
               </button>
@@ -420,6 +420,14 @@ async function renderDashboard(container) {
       if (tab) {
         try {
           sessionStorage.setItem('salesFinancePreferredTab', tab);
+        } catch {
+          /* ignore */
+        }
+      }
+      const accountingTab = btn.dataset.accountingTab;
+      if (accountingTab) {
+        try {
+          sessionStorage.setItem('farmFinanceAccountingTab', accountingTab);
         } catch {
           /* ignore */
         }

@@ -527,6 +527,7 @@ async function buildToolbar() {
     const next = nowDark ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
+    window.dispatchEvent(new CustomEvent('estate-theme-change', { detail: { theme: next } }));
     await buildToolbar();
   });
 }

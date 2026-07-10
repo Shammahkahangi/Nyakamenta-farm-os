@@ -2,8 +2,17 @@
 // finance.js — Farm accounting UI (aligned with Growth Gateway Accounting layout)
 // Light dashboard: KPIs, charts, sub-tabs — UGX ledger from SQLite.
 // ============================================================
-import { dataService, FINANCE_CATEGORIES } from '../../services/dataService.js';
+import { dataService, FINANCE_CATEGORIES, FINANCE_COST_CENTERS, financeCategoriesForCostCenter } from '../../services/dataService.js';
 import { showToast } from '../../utils/toast.js';
+import { downloadCSV } from '../core/reports.js';
+import {
+  buildFarmFinanceDocx,
+  buildVisualReportExportHtml,
+  downloadBlob,
+  exportStamp,
+  openHtmlInPrintWindow,
+} from './financeExport.js';
+import { openAddDispatchModal } from './domesticDispatch.js';
 
 const SUBTAB_KEY = 'farmFinanceAccountingTab';
 const OVERVIEW_RANGE_KEY = 'farmFinanceOverviewRange';
@@ -16,6 +25,7 @@ const PIE_COLORS = ['#1e3a5f', '#2563eb', '#0ea5e9', '#38bdf8', '#7dd3fc', '#c78
 /** Gateway-style farm financial reports (single-entry UGX ledger + SACCO loans where relevant). */
 const ACCOUNTING_SUBTABS = [
   { id: 'overview', label: 'Financial Overview' },
+  { id: 'general', label: 'General Report' },
   { id: 'income', label: 'Comprehensive Income' },
   { id: 'position', label: 'Financial Position' },
   { id: 'cashflow', label: 'Cashflow Statement' },
@@ -57,6 +67,26 @@ function fmt(n) {
   if (x >= 1_000_000) return `UGX ${(x / 1_000_000).toFixed(1)}M`;
   if (x >= 1_000) return `UGX ${(x / 1_000).toFixed(0)}K`;
   return `UGX ${Math.round(x).toLocaleString()}`;
+}
+
+function itemsInDateRange(items, fromIso, toIso) {
+  return (items || []).filter((i) => {
+    const ds = rowDateStr(i);
+    return ds && ds >= fromIso && ds <= toIso;
+  });
+}
+
+function ledgerCsvRows(items) {
+  return items.map((row) => ({
+    Date: row.date || '',
+    Type: row.type || '',
+    'Attributed to': dataService.costCenterLabel(row.cost_center),
+    Category: row.category || '',
+    Description: row.description || '',
+    Method: pmDisplay(row),
+    Amount_UGX: Math.round(Number(row.amount) || 0),
+    Source: row.source_module || 'manual',
+  }));
 }
 
 function monthKey(dateLike) {
@@ -318,7 +348,29 @@ function ytdTotals(items) {
 
 function expenseGroupForCategory(catName) {
   const found = FINANCE_CATEGORIES.Expense.find((c) => c.name === catName);
-  return found?.group || 'Other';
+  if (found?.group) return found.group;
+  const farmGroups = new Set((FINANCE_CATEGORIES.Expense || []).map((c) => c.group));
+  if (farmGroups.has(catName)) return catName;
+  const houseCats = financeCategoriesForCostCenter('ruhunga_farm_house').Expense || [];
+  const houseFound = houseCats.find((c) => c.name === catName || c.group === catName);
+  if (houseFound) return houseFound.group || catName;
+  return 'Other';
+}
+
+function rowCostCenter(row) {
+  return dataService.normalizeCostCenter(row?.cost_center);
+}
+
+function sumInRangeForCenter(items, fromIso, toIso, type, costCenter) {
+  let total = 0;
+  for (const row of items) {
+    if (row.type !== type) continue;
+    if (rowCostCenter(row) !== costCenter) continue;
+    const ds = rowDateStr(row);
+    if (!ds || ds < fromIso || ds > toIso) continue;
+    total += Number(row.amount) || 0;
+  }
+  return total;
 }
 
 function parseRowDate(row) {
@@ -445,7 +497,7 @@ function renderComprehensiveIncomeHtml(items, year) {
           <thead><tr><th>Category</th><th class="fa-th-num">Amount</th></tr></thead>
           <tbody>
             ${revRows || `<tr><td colspan="2" class="fa-td-empty">No revenue this year.</td></tr>`}
-            <tr class="fa-tr" style="font-weight:700;border-top:2px solid hsl(214 32% 88%);">
+            <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
               <td class="fa-td">Total revenue</td>
               <td class="fa-td-num fa-num-rev">${dataService.formatCurrency(totalRev)}</td>
             </tr>
@@ -465,7 +517,7 @@ function renderComprehensiveIncomeHtml(items, year) {
           <thead><tr><th>Category</th><th class="fa-th-num">Amount</th></tr></thead>
           <tbody>
             ${expRows || `<tr><td colspan="2" class="fa-td-empty">No expenses this year.</td></tr>`}
-            <tr class="fa-tr" style="font-weight:700;border-top:2px solid hsl(214 32% 88%);">
+            <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
               <td class="fa-td">Total expenses</td>
               <td class="fa-td-num fa-num-exp">${dataService.formatCurrency(totalExp)}</td>
             </tr>
@@ -503,7 +555,7 @@ function renderFinancialPositionHtml(summary, saccoOutstanding, totalAcres) {
             <tr class="fa-tr" style="font-weight:700;"><td class="fa-td">Retained result (ledger)</td><td class="fa-td-num">${dataService.formatCurrency(Math.abs(netProfit))} ${netProfit >= 0 ? '(profit)' : '(loss)'}</td></tr>
             <tr class="fa-tr"><td class="fa-td">Implied net cash position (no opening balance)</td><td class="fa-td-num">${dataService.formatCurrency(impliedCash)}</td></tr>
             <tr class="fa-tr"><td class="fa-td">Less: SACCO loans outstanding (staff)</td><td class="fa-td-num fa-num-exp">−${dataService.formatCurrency(saccoOutstanding)}</td></tr>
-            <tr class="fa-tr" style="font-weight:700;border-top:2px solid hsl(214 32% 88%);">
+            <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
               <td class="fa-td">Approx. net farm position</td>
               <td class="fa-td-num ${netWorth >= 0 ? 'fa-num-rev' : 'fa-num-exp'}">${dataService.formatCurrency(netWorth)}</td>
             </tr>
@@ -566,7 +618,7 @@ function renderCashflowHtml(items, year) {
           <tbody>
             ${row('Cash from revenue (operating)', opRev, 'fa-num-rev')}
             ${row('Cash paid for expenses (operating)', -opExp, 'fa-num-exp')}
-            <tr class="fa-tr" style="font-weight:700;border-top:1px solid hsl(214 32% 88%);">
+            <tr class="fa-tr" style="font-weight:700;border-top:1px solid var(--fa-rule);">
               <td class="fa-td">Net operating cash</td>
               <td class="fa-td-num ${netOp >= 0 ? 'fa-num-rev' : 'fa-num-exp'}">${dataService.formatCurrency(Math.abs(netOp))}</td>
               <td class="fa-td"></td>
@@ -651,11 +703,11 @@ function renderEquityHtml(items, year) {
           <tbody>
             <tr class="fa-tr"><td class="fa-td">Opening retained earnings (assumed)</td><td class="fa-td-num">0</td></tr>
             <tr class="fa-tr"><td class="fa-td">Profit for ${year}</td><td class="fa-td-num ${profit >= 0 ? 'fa-num-rev' : 'fa-num-exp'}">${dataService.formatCurrency(Math.abs(profit))}</td></tr>
-            <tr class="fa-tr" style="font-weight:700;border-top:2px solid hsl(214 32% 88%);">
+            <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
               <td class="fa-td">Closing retained earnings (${year})</td>
               <td class="fa-td-num">${dataService.formatCurrency(profit)}</td>
             </tr>
-            <tr class="fa-tr"><td class="fa-td" colspan="2" style="padding-top:12px;font-size:11px;color:hsl(215 16% 42%);">All-time cumulative retained result: ${dataService.formatCurrency(retained)}</td></tr>
+            <tr class="fa-tr"><td class="fa-td" colspan="2" style="padding-top:12px;font-size:11px;color:var(--fa-text-2);">All-time cumulative retained result: ${dataService.formatCurrency(retained)}</td></tr>
           </tbody>
         </table>
       </div>
@@ -692,7 +744,7 @@ function renderAnalysisHtml(items, blocks, batches, year) {
     <tr class="fa-tr">
       <td class="fa-td">${escHtml(label)}</td>
       <td class="fa-td-num" style="font-weight:600;">${valueCell}</td>
-      <td class="fa-td" style="font-size:11px;color:hsl(215 16% 42%);">${escHtml(basis)}</td>
+      <td class="fa-td" style="font-size:11px;color:var(--fa-text-2);">${escHtml(basis)}</td>
     </tr>`;
 
   return `
@@ -761,7 +813,7 @@ function renderCashBookHtml(items, from, to) {
       return `
     <tr class="fa-tr">
       <td class="fa-td">${escHtml(item.date)}</td>
-      <td class="fa-td">${escHtml(item.blockName || '—')}</td>
+      <td class="fa-td">${escHtml(dataService.costCenterLabel(item.cost_center))}</td>
       <td class="fa-td-desc">${escHtml(item.description || '—')}</td>
       <td class="fa-td">${pmDisplay(item)}</td>
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
@@ -781,7 +833,7 @@ function renderCashBookHtml(items, from, to) {
 
   return `
     ${reportBlurb(
-      'Estate ledger in UGX: manual entries, lodge flows, and mirrored field costs. Rows and running balance respect the date range in the bar above; balance includes net cash from all lines before the range start.'
+      'Estate ledger in UGX: coffee operations and Ruhunga farm house (tagged separately), plus lodge flows and mirrored field costs. Rows and running balance respect the date range in the bar above; balance includes net cash from all lines before the range start.'
     )}
     <div class="fa-report-preamble">
     ${openingLine}
@@ -792,7 +844,7 @@ function renderCashBookHtml(items, from, to) {
         <table class="fa-table">
           <thead>
             <tr>
-              <th>Date</th><th>Block</th><th>Description</th><th>Method</th><th class="fa-th-num">Movement</th><th class="fa-th-num">Balance</th>
+              <th>Date</th><th>Attributed to</th><th>Description</th><th>Method</th><th class="fa-th-num">Movement</th><th class="fa-th-num">Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -804,6 +856,218 @@ function renderCashBookHtml(items, from, to) {
         </table>
       </div>
     </div>
+  `;
+}
+
+function contractDateStr(c) {
+  const raw = String(c?.etd || c?.date || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+}
+
+/** All-activity farm report for the selected period (ledger + dispatches + production). */
+function renderGeneralReportHtml({ items, contracts, blocks, batches, from, to }) {
+  const inRange = itemsWithDateInRange(items, from, to);
+  const rev = sumInRange(items, from, to, 'Revenue');
+  const exp = sumInRange(items, from, to, 'Expense');
+  const net = rev - exp;
+  const farmExp = sumInRangeForCenter(items, from, to, 'Expense', 'farm');
+  const houseExp = sumInRangeForCenter(items, from, to, 'Expense', 'ruhunga_farm_house');
+  const farmRev = sumInRangeForCenter(items, from, to, 'Revenue', 'farm');
+  const houseRev = sumInRangeForCenter(items, from, to, 'Revenue', 'ruhunga_farm_house');
+
+  const bySource = {};
+  for (const row of inRange) {
+    const src = String(row.source_module || 'manual').trim() || 'manual';
+    if (!bySource[src]) bySource[src] = { revenue: 0, expense: 0, count: 0 };
+    const amt = Number(row.amount) || 0;
+    bySource[src].count += 1;
+    if (row.type === 'Revenue') bySource[src].revenue += amt;
+    else if (row.type === 'Expense') bySource[src].expense += amt;
+  }
+  const sourceRows = Object.entries(bySource)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(
+      ([src, v]) => `
+    <tr class="fa-tr">
+      <td class="fa-td mono">${escHtml(src)}</td>
+      <td class="fa-td-num">${v.count}</td>
+      <td class="fa-td-num fa-num-rev">${dataService.formatCurrency(v.revenue)}</td>
+      <td class="fa-td-num fa-num-exp">${dataService.formatCurrency(v.expense)}</td>
+    </tr>`
+    )
+    .join('');
+
+  const dispatches = (contracts || []).filter((c) => {
+    const ds = contractDateStr(c);
+    return ds && ds >= from && ds <= to;
+  });
+  const dispatchKg = dispatches.reduce((s, c) => s + Number(c.netKg || 0), 0);
+  const dispatchVal = dispatches.reduce((s, c) => s + Number(c.totalValue || 0), 0);
+  const dispatchRows = dispatches
+    .slice()
+    .sort((a, b) => String(b.etd || '').localeCompare(String(a.etd || '')))
+    .slice(0, 40)
+    .map(
+      (c) => `
+    <tr class="fa-tr">
+      <td class="fa-td mono">${escHtml(c.id)}</td>
+      <td class="fa-td">${escHtml(c.buyer || '—')}</td>
+      <td class="fa-td">${escHtml(c.grade || '—')}</td>
+      <td class="fa-td-num">${Number(c.netKg || 0).toLocaleString()} kg</td>
+      <td class="fa-td-num fa-num-rev">${dataService.formatCurrency(c.totalValue)}</td>
+      <td class="fa-td">${escHtml(c.etd || '—')}</td>
+      <td class="fa-td">${escHtml(c.status || '—')}</td>
+    </tr>`
+    )
+    .join('');
+
+  const totalAcres = (blocks || []).reduce((s, b) => s + Number(b.acres || 0), 0);
+  const cherryIn = (batches || []).reduce((s, b) => s + Number(b.kgIn || 0), 0);
+  const greenOut = (batches || []).reduce((s, b) => s + Number(b.kgOut || 0), 0);
+
+  const catMap = {};
+  for (const row of inRange) {
+    if (row.type !== 'Expense') continue;
+    const cat = row.category || 'Other';
+    catMap[cat] = (catMap[cat] || 0) + (Number(row.amount) || 0);
+  }
+  const topExp = Object.entries(catMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(
+      ([cat, amt]) => `
+    <tr class="fa-tr">
+      <td class="fa-td">${escHtml(cat)}</td>
+      <td class="fa-td-num fa-num-exp">${dataService.formatCurrency(amt)}</td>
+    </tr>`
+    )
+    .join('');
+
+  return `
+    ${reportBlurb(
+      `General farm activity for ${formatRangeHint(from, to)}: ledger movements (including automatic posts from dispatch, payroll, and field ops), domestic dispatches, and production snapshot. Dispatch sales post once into the farm ledger — there is no separate sales register tab.`
+    )}
+    <div class="fa-kpi-grid">
+      <div class="fa-kpi fa-kpi-green">
+        <div class="fa-kpi-h">Revenue</div>
+        <div class="fa-kpi-v">${fmt(rev)}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${inRange.filter((i) => i.type === 'Revenue').length} lines</div>
+      </div>
+      <div class="fa-kpi fa-kpi-red">
+        <div class="fa-kpi-h">Expenses</div>
+        <div class="fa-kpi-v">${fmt(exp)}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${inRange.filter((i) => i.type === 'Expense').length} lines</div>
+      </div>
+      <div class="fa-kpi ${net >= 0 ? 'fa-kpi-blue' : 'fa-kpi-orange'}">
+        <div class="fa-kpi-h">Net result</div>
+        <div class="fa-kpi-v">${fmt(Math.abs(net))}<span class="fa-kpi-sub"> ${net >= 0 ? 'profit' : 'loss'}</span></div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Selected period</div>
+      </div>
+      <div class="fa-kpi fa-kpi-amber">
+        <div class="fa-kpi-h">Domestic dispatch</div>
+        <div class="fa-kpi-v">${fmt(dispatchVal)}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${dispatches.length} loads · ${dispatchKg.toLocaleString()} kg</div>
+      </div>
+    </div>
+    <div class="fa-kpi-grid">
+      <div class="fa-kpi fa-kpi-blue">
+        <div class="fa-kpi-h">Estate (farm)</div>
+        <div class="fa-kpi-v">${fmt(Math.abs(farmRev - farmExp))}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(farmRev)} · Exp ${fmt(farmExp)}</div>
+      </div>
+      <div class="fa-kpi fa-kpi-amber">
+        <div class="fa-kpi-h">Ruhunga farm house</div>
+        <div class="fa-kpi-v">${fmt(Math.abs(houseRev - houseExp))}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(houseRev)} · Exp ${fmt(houseExp)}</div>
+      </div>
+      <div class="fa-kpi fa-kpi-green">
+        <div class="fa-kpi-h">Estate acreage</div>
+        <div class="fa-kpi-v">${totalAcres.toFixed(1)} ac</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${(blocks || []).length} blocks</div>
+      </div>
+      <div class="fa-kpi fa-kpi-blue">
+        <div class="fa-kpi-h">Processing (all batches)</div>
+        <div class="fa-kpi-v">${Math.round(greenOut).toLocaleString()} kg</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Cherry in ${Math.round(cherryIn).toLocaleString()} kg</div>
+      </div>
+    </div>
+
+    <div class="fa-card fa-card-pad0">
+      <div class="fa-card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div class="fa-card-title">Domestic dispatches (period)</div>
+          <div class="fa-card-desc">Green coffee sales — each load also posts revenue to the farm ledger</div>
+        </div>
+        <button type="button" class="fa-btn-primary" id="fa-add-dispatch">
+          <span class="material-symbols-outlined">local_shipping</span> Record dispatch
+        </button>
+      </div>
+      <div class="fa-table-wrap">
+        <table class="fa-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Receiver</th><th>Grade</th><th class="fa-th-num">Net kg</th>
+              <th class="fa-th-num">Value</th><th>Date</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              dispatchRows ||
+              `<tr><td colspan="7" class="fa-td-empty">No dispatches in this period. Use Record dispatch to log a sale.</td></tr>`
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="fa-card fa-card-pad0">
+      <div class="fa-card-head">
+        <div class="fa-card-title">Ledger activity by source</div>
+        <div class="fa-card-desc">What fed the farm ledger in this period (automatic + manual)</div>
+      </div>
+      <div class="fa-table-wrap">
+        <table class="fa-table">
+          <thead>
+            <tr>
+              <th>Source</th><th class="fa-th-num">Lines</th>
+              <th class="fa-th-num">Revenue</th><th class="fa-th-num">Expenses</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              sourceRows ||
+              `<tr><td colspan="4" class="fa-td-empty">No ledger activity in this period.</td></tr>`
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="fa-card fa-card-pad0">
+      <div class="fa-card-head">
+        <div class="fa-card-title">Top expense categories</div>
+        <div class="fa-card-desc">Selected period</div>
+      </div>
+      <div class="fa-table-wrap">
+        <table class="fa-table">
+          <thead><tr><th>Category</th><th class="fa-th-num">Amount</th></tr></thead>
+          <tbody>
+            ${
+              topExp ||
+              `<tr><td colspan="2" class="fa-td-empty">No expenses in this period.</td></tr>`
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${renderJournalTable(
+      [...inRange]
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+        .slice(0, 60),
+      'Recent ledger entries',
+      'No ledger entries in this period.'
+    )}
   `;
 }
 
@@ -861,7 +1125,7 @@ function renderTrialBalanceHtml(items) {
     net === 0
       ? ''
       : `
-    <tr class="fa-tr" style="font-weight:700;border-top:2px solid hsl(214 32% 88%);">
+    <tr class="fa-tr" style="font-weight:700;border-top:2px solid var(--fa-rule);">
       <td class="fa-td">${balLabel}</td>
       <td class="fa-td-num">${balDr ? dataService.formatCurrency(balDr) : '—'}</td>
       <td class="fa-td-num">${balCr ? dataService.formatCurrency(balCr) : '—'}</td>
@@ -931,17 +1195,6 @@ function destroyChartsIn(root) {
 
 async function openAddTransactionModal(onSaved) {
   const card = await dataService.getMaintenanceRateCard();
-  const blocks = await dataService.getBlocks().catch(() => []);
-  const blockOpts =
-    '<option value="">— Whole farm / not block-specific —</option>' +
-    blocks
-      .map((b) => {
-        const idAttr = String(b.id ?? '')
-          .replace(/&/g, '&amp;')
-          .replace(/"/g, '&quot;');
-        return `<option value="${idAttr}">${escHtml(b.name || b.id)}</option>`;
-      })
-      .join('');
   const maintOpts =
     '<option value="">— None —</option>' +
     (card.lines || [])
@@ -960,23 +1213,23 @@ async function openAddTransactionModal(onSaved) {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
 
-  const buildOptions = (type) => {
-    const cats = FINANCE_CATEGORIES[type] || [];
-    const groups = {};
+  /** Group-level categories for the selected cost center. */
+  const buildOptions = (type, costCenter) => {
+    const cats = financeCategoriesForCostCenter(costCenter)[type] || [];
+    const groups = [];
+    const seen = new Set();
     cats.forEach((c) => {
-      if (!groups[c.group]) groups[c.group] = [];
-      groups[c.group].push(c.name);
+      const g = c.group || 'Other';
+      if (seen.has(g)) return;
+      seen.add(g);
+      groups.push(g);
     });
-    return Object.entries(groups)
-      .map(
-        ([g, items]) => `
-      <optgroup label="${g}">
-        ${items.map((name) => `<option value="${name}">${name}</option>`).join('')}
-      </optgroup>
-    `
-      )
-      .join('');
+    return groups.map((g) => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
   };
+
+  const costCenterOpts = FINANCE_COST_CENTERS.map(
+    (c) => `<option value="${c.id}">${escHtml(c.label)}</option>`
+  ).join('');
 
   backdrop.innerHTML = `
     <div class="modal">
@@ -985,6 +1238,13 @@ async function openAddTransactionModal(onSaved) {
         <button class="modal-close"><span class="material-symbols-outlined">close</span></button>
       </div>
       <div class="modal-body">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label">Attributed to</label>
+          <select class="form-select" id="tx-cost-center">${costCenterOpts}</select>
+          <p style="font-size:11px;color:var(--text-muted);margin:6px 0 0;line-height:1.4;">
+            Estate (farm) = coffee operations. Ruhunga farm house = household / guest costs separate from the field.
+          </p>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Type</label>
@@ -1001,7 +1261,7 @@ async function openAddTransactionModal(onSaved) {
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Category</label>
-            <select class="form-select" id="tx-category">${buildOptions('Expense')}</select>
+            <select class="form-select" id="tx-category">${buildOptions('Expense', 'farm')}</select>
           </div>
           <div class="form-group">
             <label class="form-label">Amount (UGX)</label>
@@ -1019,14 +1279,10 @@ async function openAddTransactionModal(onSaved) {
           </div>
           <div class="form-group">
             <label class="form-label">Description</label>
-            <input type="text" class="form-input" id="tx-description" placeholder="e.g. Fertiliser — Block A">
+            <input type="text" class="form-input" id="tx-description" placeholder="e.g. Electricity — Ruhunga farm house">
           </div>
         </div>
-        <div class="form-group" style="margin-top:4px;">
-          <label class="form-label">Block maintained / attributed (optional)</label>
-          <select class="form-select" id="tx-block">${blockOpts}</select>
-        </div>
-        <div class="form-group" style="margin-top:4px;">
+        <div class="form-group" id="tx-maint-wrap" style="margin-top:4px;">
           <label class="form-label">Maintenance activity (optional)</label>
           <select class="form-select" id="tx-maint">${maintOpts}</select>
         </div>
@@ -1044,9 +1300,17 @@ async function openAddTransactionModal(onSaved) {
 
   const typeSel = backdrop.querySelector('#tx-type');
   const catSel = backdrop.querySelector('#tx-category');
-  typeSel.addEventListener('change', () => {
-    catSel.innerHTML = buildOptions(typeSel.value);
-  });
+  const centerSel = backdrop.querySelector('#tx-cost-center');
+  const maintWrap = backdrop.querySelector('#tx-maint-wrap');
+
+  const refreshCategoryAndMaint = () => {
+    const cc = centerSel.value || 'farm';
+    catSel.innerHTML = buildOptions(typeSel.value, cc);
+    if (maintWrap) maintWrap.style.display = cc === 'farm' ? '' : 'none';
+  };
+
+  typeSel.addEventListener('change', refreshCategoryAndMaint);
+  centerSel.addEventListener('change', refreshCategoryAndMaint);
 
   const close = () => document.body.removeChild(backdrop);
   backdrop.querySelector('.modal-close').addEventListener('click', close);
@@ -1062,8 +1326,9 @@ async function openAddTransactionModal(onSaved) {
     const amount = parseFloat(backdrop.querySelector('#tx-amount').value);
     const description = backdrop.querySelector('#tx-description').value.trim();
     const payment_method = backdrop.querySelector('#tx-payment').value;
-    const maintenance_activity_key = (backdrop.querySelector('#tx-maint')?.value || '').trim();
-    const block_id = (backdrop.querySelector('#tx-block')?.value || '').trim() || undefined;
+    const cost_center = centerSel.value || 'farm';
+    const maintenance_activity_key =
+      cost_center === 'farm' ? (backdrop.querySelector('#tx-maint')?.value || '').trim() : '';
     const errEl = backdrop.querySelector('#tx-error');
 
     if (!description || isNaN(amount) || amount <= 0) {
@@ -1081,12 +1346,21 @@ async function openAddTransactionModal(onSaved) {
       type,
       payment_method,
       maintenance_activity_key: maintenance_activity_key || undefined,
-      block_id,
+      cost_center,
     });
     close();
-    showToast(`${type} logged: ${dataService.formatCurrency(amount)} · ${category}.`);
+    const where = dataService.costCenterLabel(cost_center);
+    showToast(`${type} logged: ${dataService.formatCurrency(amount)} · ${category} · ${where}.`);
     if (onSaved) onSaved();
   });
+}
+
+function farmChartTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+  return {
+    tick: dark ? '#94a3b8' : '#64748b',
+    grid: dark ? 'hsla(220, 25%, 30%, 0.55)' : '#e2e8f0',
+  };
 }
 
 async function bindOverviewCharts(panel, monthly, expensePie) {
@@ -1094,6 +1368,7 @@ async function bindOverviewCharts(panel, monthly, expensePie) {
     await ensureChartJs();
     await waitNextPaint();
     const Chart = window.Chart;
+    const { tick, grid } = farmChartTheme();
 
     const barEl = panel.querySelector('#fa-chart-bar');
     if (barEl) {
@@ -1111,7 +1386,7 @@ async function bindOverviewCharts(panel, monthly, expensePie) {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom', labels: { color: '#64748b', font: { size: 11 } } },
+            legend: { position: 'bottom', labels: { color: tick, font: { size: 11 } } },
             tooltip: {
               callbacks: {
                 label: (ctx) => ` ${ctx.dataset.label}: UGX ${Math.round(ctx.raw || 0).toLocaleString()}`,
@@ -1119,15 +1394,15 @@ async function bindOverviewCharts(panel, monthly, expensePie) {
             },
           },
           scales: {
-            x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+            x: { ticks: { color: tick, maxRotation: 45, font: { size: 10 } }, grid: { color: grid } },
             y: {
               beginAtZero: true,
               ticks: {
-                color: '#64748b',
+                color: tick,
                 font: { size: 10 },
                 callback: (v) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` : `${(v / 1_000).toFixed(0)}K`),
               },
-              grid: { strokeDasharray: '3 3', color: '#e2e8f0' },
+              grid: { strokeDasharray: '3 3', color: grid },
             },
           },
         },
@@ -1191,15 +1466,15 @@ async function bindOverviewCharts(panel, monthly, expensePie) {
             },
           },
           scales: {
-            x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#e2e8f0' } },
+            x: { ticks: { color: tick, font: { size: 10 } }, grid: { color: grid } },
             y: {
               beginAtZero: true,
               ticks: {
-                color: '#64748b',
+                color: tick,
                 font: { size: 10 },
                 callback: (v) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` : `${(v / 1_000).toFixed(0)}K`),
               },
-              grid: { strokeDasharray: '3 3', color: '#e2e8f0' },
+              grid: { strokeDasharray: '3 3', color: grid },
             },
           },
         },
@@ -1220,8 +1495,8 @@ function renderJournalTable(items, title, emptyMsg) {
     <tr class="fa-tr">
       <td class="fa-td">${item.date}</td>
       <td class="fa-td"><span class="fa-badge ${item.type === 'Expense' ? 'fa-badge-exp' : 'fa-badge-rev'}">${item.type}</span></td>
+      <td class="fa-td">${escHtml(dataService.costCenterLabel(item.cost_center))}</td>
       <td class="fa-td">${item.category || '—'}</td>
-      <td class="fa-td">${item.blockName || '—'}</td>
       <td class="fa-td-desc">${(item.description || '').replace(/</g, '&lt;')}</td>
       <td class="fa-td">${pmDisplay(item)}</td>
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
@@ -1242,7 +1517,7 @@ function renderJournalTable(items, title, emptyMsg) {
         <table class="fa-table">
           <thead>
             <tr>
-              <th>Date</th><th>Type</th><th>Category</th><th>Block</th><th>Description</th><th>Method</th><th class="fa-th-num">Amount</th>
+              <th>Date</th><th>Type</th><th>Attributed to</th><th>Category</th><th>Description</th><th>Method</th><th class="fa-th-num">Amount</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -1275,6 +1550,88 @@ async function renderFinance(container) {
 
   /** Monotonic counter so overlapping async paints do not apply stale DOM. */
   let paintSeq = 0;
+  /** Snapshot for CSV / HTML / print exports after each successful paint. */
+  let exportCtx = {
+    items: [],
+    from: '',
+    to: '',
+    activeSub: activeSub,
+    tabLabel: 'Financial Overview',
+    summary: [],
+  };
+
+  const runExportCsv = () => {
+    const from = exportCtx.from || overviewRange.from;
+    const to = exportCtx.to || overviewRange.to;
+    const rows = ledgerCsvRows(itemsInDateRange(exportCtx.items, from, to));
+    if (!rows.length) {
+      showToast('No ledger lines in the selected period to export.');
+      return;
+    }
+    downloadCSV(`farm_finance_ledger_${from}_${to}.csv`, rows);
+    showToast(`Exported ${rows.length} ledger line(s) as CSV.`);
+  };
+
+  const runExportWord = async () => {
+    const from = exportCtx.from || overviewRange.from;
+    const to = exportCtx.to || overviewRange.to;
+    const panel = shell.querySelector('#fa-panel');
+    if (!panel) {
+      showToast('Nothing to export yet — wait for the report to load.');
+      return;
+    }
+    const tabLabel = exportCtx.tabLabel || 'Report';
+    const periodLabel =
+      exportCtx.activeSub === 'income' ||
+      exportCtx.activeSub === 'cashflow' ||
+      exportCtx.activeSub === 'equity' ||
+      exportCtx.activeSub === 'analysis' ||
+      exportCtx.activeSub === 'position'
+        ? `Calendar year ${new Date().getFullYear()}`
+        : formatRangeHint(from, to);
+    try {
+      showToast(`Building Word document…`);
+      const blob = await buildFarmFinanceDocx(panel, {
+        title: tabLabel,
+        tabLabel,
+        periodLabel,
+      });
+      const slug = String(exportCtx.activeSub || 'report').replace(/[^a-z0-9_-]/gi, '_');
+      downloadBlob(`farm_finance_${slug}_${exportStamp()}.doc`, blob);
+      showToast(`${tabLabel} downloaded as Word (.doc).`);
+    } catch (e) {
+      console.error('[Farm accounting] Word export failed', e);
+      showToast(`Word export failed: ${String(e?.message || e)}`);
+    }
+  };
+
+  const runExportPrint = () => {
+    const from = exportCtx.from || overviewRange.from;
+    const to = exportCtx.to || overviewRange.to;
+    const panel = shell.querySelector('#fa-panel');
+    if (!panel) {
+      showToast('Nothing to export yet — wait for the report to load.');
+      return;
+    }
+    const tabLabel = exportCtx.tabLabel || 'Report';
+    const periodLabel =
+      exportCtx.activeSub === 'income' ||
+      exportCtx.activeSub === 'cashflow' ||
+      exportCtx.activeSub === 'equity' ||
+      exportCtx.activeSub === 'analysis' ||
+      exportCtx.activeSub === 'position'
+        ? `Calendar year ${new Date().getFullYear()}`
+        : formatRangeHint(from, to);
+    const html = buildVisualReportExportHtml(panel, {
+      title: tabLabel,
+      tabLabel,
+      periodLabel,
+    });
+    const ok = openHtmlInPrintWindow(html, {
+      onBlocked: () => showToast('Pop-up blocked — allow pop-ups to print, or use Download Word.'),
+    });
+    if (ok) showToast(`Printing ${tabLabel}…`);
+  };
 
   shell.addEventListener('click', (e) => {
     const raw = e.target;
@@ -1288,6 +1645,26 @@ async function renderFinance(container) {
     if (t.closest('#fa-add-entry')) {
       e.preventDefault();
       openAddTransactionModal(() => schedulePaint()).catch(() => {});
+      return;
+    }
+    if (t.closest('#fa-add-dispatch')) {
+      e.preventDefault();
+      openAddDispatchModal(() => schedulePaint());
+      return;
+    }
+    if (t.closest('#fa-export-csv')) {
+      e.preventDefault();
+      runExportCsv();
+      return;
+    }
+    if (t.closest('#fa-export-word')) {
+      e.preventDefault();
+      void runExportWord();
+      return;
+    }
+    if (t.closest('#fa-print')) {
+      e.preventDefault();
+      runExportPrint();
       return;
     }
     const presetBtn = t.closest('[data-fa-range-preset]');
@@ -1332,6 +1709,11 @@ async function renderFinance(container) {
     void runPaint();
   };
 
+  const onThemeChange = () => {
+    if (shell.isConnected) schedulePaint();
+  };
+  window.addEventListener('estate-theme-change', onThemeChange);
+
   const runPaint = async () => {
     const seq = ++paintSeq;
     const prevPanel = shell.querySelector('#fa-panel');
@@ -1355,13 +1737,15 @@ async function renderFinance(container) {
     let repayments;
     let blocks;
     let batches;
+    let contracts;
     try {
-      [items, loans, repayments, blocks, batches] = await Promise.all([
+      [items, loans, repayments, blocks, batches, contracts] = await Promise.all([
       dataService.getFinanceItems(),
       dataService.getSaccoLoans().catch(() => []),
       dataService.getSaccoRepayments().catch(() => []),
       dataService.getBlocks().catch(() => []),
       dataService.getBatches().catch(() => []),
+      dataService.getContracts().catch(() => []),
     ]);
     } catch (e) {
       console.error('[Farm accounting] Failed to load ledger', e);
@@ -1405,6 +1789,30 @@ async function renderFinance(container) {
     const rangeHint = formatRangeHint(rf, rt);
     const chartMonthsNote =
       monthKeys.length <= 1 ? '1 month in view' : `${monthKeys.length} months in view`;
+    const farmExpP = sumInRangeForCenter(items, rf, rt, 'Expense', 'farm');
+    const houseExpP = sumInRangeForCenter(items, rf, rt, 'Expense', 'ruhunga_farm_house');
+    const farmRevP = sumInRangeForCenter(items, rf, rt, 'Revenue', 'farm');
+    const houseRevP = sumInRangeForCenter(items, rf, rt, 'Revenue', 'ruhunga_farm_house');
+    const farmNetP = farmRevP - farmExpP;
+    const houseNetP = houseRevP - houseExpP;
+
+    const tabMeta = ACCOUNTING_SUBTABS.find((t) => t.id === activeSub);
+    exportCtx = {
+      items,
+      from: rf,
+      to: rt,
+      activeSub,
+      tabLabel: tabMeta?.label || activeSub,
+      summary: [
+        ['Period', formatRangeHint(rf, rt)],
+        ['Revenue (period)', dataService.formatCurrency(revP)],
+        ['Expenses (period)', dataService.formatCurrency(expP)],
+        ['Net profit (period)', dataService.formatCurrency(netP)],
+        ['Estate (farm) net', dataService.formatCurrency(farmNetP)],
+        ['Ruhunga farm house net', dataService.formatCurrency(houseNetP)],
+        ['YTD net profit', dataService.formatCurrency(ytd.netProfit)],
+      ],
+    };
 
     const overviewKpiHtml = `
       <div class="fa-kpi-grid">
@@ -1429,6 +1837,18 @@ async function renderFinance(container) {
           <div class="fa-kpi-h">YTD net profit</div>
           <div class="fa-kpi-v fa-kpi-v-amber">${fmt(Math.abs(ytd.netProfit))}</div>
           <div class="fa-kpi-f fa-kpi-f-muted">${new Date().getFullYear()} year-to-date</div>
+        </div>
+      </div>
+      <div class="fa-kpi-grid" style="margin-top:0;">
+        <div class="fa-kpi fa-kpi-blue">
+          <div class="fa-kpi-h">Estate (farm) net</div>
+          <div class="fa-kpi-v">${fmt(Math.abs(farmNetP))}<span class="fa-kpi-sub"> ${farmNetP >= 0 ? 'profit' : 'loss'}</span></div>
+          <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(farmRevP)} · Exp ${fmt(farmExpP)}</div>
+        </div>
+        <div class="fa-kpi fa-kpi-amber">
+          <div class="fa-kpi-h">Ruhunga farm house net</div>
+          <div class="fa-kpi-v">${fmt(Math.abs(houseNetP))}<span class="fa-kpi-sub"> ${houseNetP >= 0 ? 'profit' : 'loss'}</span></div>
+          <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(houseRevP)} · Exp ${fmt(houseExpP)}</div>
         </div>
       </div>
       <div class="fa-chart-row">
@@ -1487,6 +1907,15 @@ async function renderFinance(container) {
     let bodyHtml = '';
     if (activeSub === 'overview') {
       bodyHtml = overviewKpiHtml;
+    } else if (activeSub === 'general') {
+      bodyHtml = renderGeneralReportHtml({
+        items,
+        contracts,
+        blocks,
+        batches,
+        from: rf,
+        to: rt,
+      });
     } else if (activeSub === 'income') {
       bodyHtml = renderComprehensiveIncomeHtml(items, win.year);
     } else if (activeSub === 'position') {
@@ -1505,17 +1934,19 @@ async function renderFinance(container) {
 
     if (seq !== paintSeq) return;
 
-    const showPeriodBar = activeSub === 'overview' || activeSub === 'cashbook' || activeSub === 'trial';
+    const showPeriodBar =
+      activeSub === 'overview' ||
+      activeSub === 'general' ||
+      activeSub === 'cashbook' ||
+      activeSub === 'trial';
     const rangeBarHtml = showPeriodBar
       ? `
       <div class="fa-range-bar">
         <span class="fa-range-bar-title">Period</span>
         <div class="fa-range-presets" role="group" aria-label="Quick period">
           <button type="button" class="fa-range-chip" data-fa-range-preset="this_month">This month</button>
-          <button type="button" class="fa-range-chip" data-fa-range-preset="full_month" title="First day of this month through last day (includes all dates in the month)">Full month (calendar)</button>
           <button type="button" class="fa-range-chip" data-fa-range-preset="last_month">Last month</button>
           <button type="button" class="fa-range-chip" data-fa-range-preset="ytd">YTD</button>
-          <button type="button" class="fa-range-chip" data-fa-range-preset="last12">Last 12 months</button>
           <button type="button" class="fa-range-chip" data-fa-range-preset="all">All time</button>
         </div>
         <div class="fa-range-inputs">
@@ -1534,10 +1965,17 @@ async function renderFinance(container) {
         <div class="fa-header-top">
           <div class="fa-header-text">
             <h1 class="fa-title"><span class="material-symbols-outlined fa-book-ico">menu_book</span> Farm accounting</h1>
-            <p class="fa-sub">Estate (farm) ledger in UGX — separate from the SACCO entity. Dispatches, lodge, field costs, and payroll gross post here; SACCO has its own Accounting tab.</p>
-            ${farmLedgerSourcesDetailsHtml()}
           </div>
           <div class="fa-header-actions">
+            <button type="button" class="fa-btn-outline" id="fa-export-csv" title="Download ledger CSV for the selected period">
+              <span class="material-symbols-outlined">table</span> Export CSV
+            </button>
+            <button type="button" class="fa-btn-outline" id="fa-export-word" title="Download this report as a Word document">
+              <span class="material-symbols-outlined">description</span> Download Word
+            </button>
+            <button type="button" class="fa-btn-outline" id="fa-print" title="Print this report or save as PDF">
+              <span class="material-symbols-outlined">print</span> Print
+            </button>
             <button type="button" class="fa-btn-outline" id="fa-refresh" title="Refresh">
               <span class="material-symbols-outlined">refresh</span> Refresh
             </button>
@@ -1580,57 +2018,6 @@ async function renderFinance(container) {
   };
 
   await runPaint();
-}
-
-/** Collapsible reference: every automatic path into finance_items (Farm finance tab). */
-function farmLedgerSourcesDetailsHtml() {
-  const rows = [
-    ['—', 'Manual', 'Add entry', 'Revenue or expense you type in; optional block / maintenance tag.'],
-    ['dispatch_contract', 'Sales & dispatch', 'Domestic dispatch register', 'Revenue = net kg × UGX/kg (dispatch date).'],
-    ['lodge_payment', 'Lodge', 'Guest payment', 'Revenue when a payment is recorded.'],
-    ['lodge_expense', 'Lodge', 'Lodge expense', 'Expense.'],
-    ['fertility_app', 'Field ops', 'Fertility application', 'Expense when cost &gt; 0.'],
-    ['irrigation_log', 'Field ops', 'Irrigation log', 'Expense when cost (UGX) &gt; 0.'],
-    ['shade_tree', 'Field ops', 'Shade trees', 'Expense when cost &gt; 0.'],
-    ['stumping_cycle', 'Field ops', 'Stumping cycle', 'Expense when cost &gt; 0.'],
-    [
-      'payroll_line',
-      'Payroll',
-      'Field Operations → Workers (Pay) or post payroll to SACCO',
-      'Estate salary expense = gross. Pay modal uses payment date; bulk post / repair use payroll month-end.',
-    ],
-  ];
-  const body = rows
-    .map(
-      ([src, pillar, where, note]) => `
-    <tr class="fa-tr">
-      <td class="fa-td mono">${src}</td>
-      <td class="fa-td">${escHtml(pillar)}</td>
-      <td class="fa-td">${escHtml(where)}</td>
-      <td class="fa-td" style="font-size:10px;color:hsl(215 16% 42%);">${note}</td>
-    </tr>`
-    )
-    .join('');
-  return `
-    <details class="fa-ledger-sources" style="margin-top:12px;max-width:960px;">
-      <summary style="cursor:pointer;font-size:12px;color:var(--text-secondary);user-select:none;">
-        What feeds this ledger (all automatic sources + manual)
-      </summary>
-      <p style="font-size:11px;color:var(--text-muted);margin:10px 0 8px;line-height:1.5;">
-        This ledger is the <strong>estate (farm) entity</strong> only. Opening Farm finance runs a one-time sync for dispatches and payroll lines into <code style="font-size:10px;">finance_items</code>.
-        SACCO savings, loans, and SACCO journal lines stay under <strong>SACCO → Accounting</strong>. Inventory and nursery do not post automatically — use Add entry if needed.
-      </p>
-      <div class="fa-table-wrap" style="max-height:280px;overflow:auto;">
-        <table class="fa-table" style="font-size:11px;">
-          <thead>
-            <tr>
-              <th>source_module</th><th>Pillar</th><th>Where in app</th><th>Rule</th>
-            </tr>
-          </thead>
-          <tbody>${body}</tbody>
-        </table>
-      </div>
-    </details>`;
 }
 
 export { renderFinance };

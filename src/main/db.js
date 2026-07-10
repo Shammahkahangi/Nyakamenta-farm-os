@@ -96,6 +96,7 @@ function applySchemaUpgrades() {
     addColumnIfMissing('finance_items', 'block_id', 'TEXT');
     addColumnIfMissing('finance_items', 'source_module', 'TEXT');
     addColumnIfMissing('finance_items', 'source_id', 'TEXT');
+    addColumnIfMissing('finance_items', 'cost_center', "TEXT DEFAULT 'farm'");
 
     addColumnIfMissing('irrigation_logs', 'cost_ugx', 'REAL DEFAULT 0');
     addColumnIfMissing('shade_trees', 'cost_ugx', 'REAL DEFAULT 0');

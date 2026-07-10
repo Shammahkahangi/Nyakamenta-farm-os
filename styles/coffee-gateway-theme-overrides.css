@@ -191,9 +191,43 @@ h6,
 
 /* ── Farm accounting — seamless “one sheet” (ruled sections, no card chrome) ── */
 .farm-accounting-light {
+  /* Theme tokens — dark by default, light overrides below */
+  --fa-sheet: var(--bg-surface);
+  --fa-panel: var(--bg-raised);
+  --fa-overlay: var(--bg-overlay);
+  --fa-text: var(--text-primary);
+  --fa-text-2: var(--text-secondary);
+  --fa-text-3: var(--text-muted);
+  --fa-border: var(--border);
+  --fa-border-soft: var(--border-subtle);
+  --fa-rule: var(--border);
+  --fa-chip-bg: hsla(221 78% 53% / 0.16);
+  --fa-chip-text: var(--green-text);
+  --fa-chip-border: var(--border);
+  --fa-chip-hover: hsla(221 78% 53% / 0.24);
+  --fa-tab-track: var(--bg-overlay);
+  --fa-tab-text: var(--text-muted);
+  --fa-tab-active-bg: var(--bg-raised);
+  --fa-tab-active-text: var(--text-primary);
+  --fa-tab-active-shadow: none;
+  --fa-accent: var(--green-mid);
+  --fa-btn-text: var(--text-primary);
+  --fa-row-hover: var(--bg-overlay);
+  --fa-rev: #34d399;
+  --fa-exp: #f87171;
+  --fa-kpi-f-green: #34d399;
+  --fa-kpi-f-red: #f87171;
+  --fa-kpi-v-blue: hsl(213 94% 78%);
+  --fa-kpi-v-orange: hsl(25 95% 68%);
+  --fa-kpi-v-amber: var(--gold-text);
+  --fa-badge-rev-bg: hsla(160 84% 39% / 0.2);
+  --fa-badge-rev-text: #6ee7b7;
+  --fa-badge-exp-bg: hsla(0 72% 52% / 0.2);
+  --fa-badge-exp-text: #fca5a5;
+
   font-family: var(--font);
-  background: hsl(210 40% 99%);
-  color: hsl(222 47% 11%);
+  background: var(--fa-sheet);
+  color: var(--fa-text);
   border-radius: 0;
   padding: 8px 0 28px;
   margin: 0;
@@ -222,8 +256,8 @@ h6,
   align-items: center;
   gap: 10px 14px;
   padding: 10px 12px;
-  background: #fff;
-  border: 1px solid hsl(214 32% 88%);
+  background: var(--fa-panel);
+  border: 1px solid var(--fa-border);
   border-radius: 10px;
 }
 
@@ -232,7 +266,7 @@ h6,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: hsl(215 16% 42%);
+  color: var(--fa-text-2);
 }
 
 .farm-accounting-light .fa-range-presets {
@@ -246,15 +280,15 @@ h6,
   padding: 5px 10px;
   font-size: 11px;
   font-weight: 600;
-  color: hsl(221 83% 32%);
-  background: hsl(214 56% 97%);
-  border: 1px solid hsl(214 32% 85%);
+  color: var(--fa-chip-text);
+  background: var(--fa-chip-bg);
+  border: 1px solid var(--fa-chip-border);
   border-radius: 999px;
   cursor: pointer;
 }
 
 .farm-accounting-light .fa-range-chip:hover {
-  background: hsl(221 83% 94%);
+  background: var(--fa-chip-hover);
 }
 
 .farm-accounting-light .fa-range-inputs {
@@ -268,11 +302,11 @@ h6,
 .farm-accounting-light .fa-range-lab {
   font-size: 11px;
   font-weight: 600;
-  color: hsl(215 16% 45%);
+  color: var(--fa-text-2);
 }
 
 .farm-accounting-light .fa-range-sep {
-  color: hsl(215 16% 65%);
+  color: var(--fa-text-3);
   font-size: 13px;
 }
 
@@ -280,23 +314,24 @@ h6,
   font-family: var(--font);
   font-size: 12px;
   padding: 6px 8px;
-  border: 1px solid hsl(214 32% 85%);
+  border: 1px solid var(--fa-border);
   border-radius: 8px;
-  color: hsl(222 47% 18%);
-  background: #fff;
+  color: var(--fa-text);
+  background: var(--fa-overlay);
+  color-scheme: dark;
 }
 
 .farm-accounting-light .fa-input-date:focus {
   outline: none;
-  border-color: hsl(221 83% 45%);
-  box-shadow: 0 0 0 2px hsl(221 83% 45% / 0.2);
+  border-color: var(--fa-accent);
+  box-shadow: 0 0 0 2px hsla(221 78% 53% / 0.25);
 }
 
 .farm-accounting-light .fa-title {
   font-family: var(--font-display);
   font-size: 1.35rem;
   font-weight: 700;
-  color: hsl(222 47% 11%);
+  color: var(--fa-text);
   margin: 0;
   display: flex;
   align-items: center;
@@ -305,12 +340,12 @@ h6,
 
 .farm-accounting-light .fa-book-ico {
   font-size: 28px;
-  color: hsl(221 83% 35%);
+  color: var(--fa-accent);
 }
 
 .farm-accounting-light .fa-sub {
   font-size: 0.8rem;
-  color: hsl(215 16% 47%);
+  color: var(--fa-text-2);
   margin: 6px 0 0;
   max-width: 520px;
   line-height: 1.45;
@@ -330,15 +365,15 @@ h6,
   padding: 8px 14px;
   font-size: 12px;
   font-weight: 600;
-  color: hsl(222 47% 25%);
-  background: #fff;
-  border: 1px solid hsl(214 32% 85%);
+  color: var(--fa-btn-text);
+  background: var(--fa-panel);
+  border: 1px solid var(--fa-border);
   border-radius: 8px;
   cursor: pointer;
 }
 
 .farm-accounting-light .fa-btn-outline:hover {
-  background: hsl(210 40% 99%);
+  background: var(--fa-overlay);
 }
 
 .farm-accounting-light .fa-btn-primary {
@@ -349,14 +384,14 @@ h6,
   font-size: 12px;
   font-weight: 600;
   color: #fff;
-  background: hsl(221 83% 35%);
+  background: var(--green);
   border: none;
   border-radius: 8px;
   cursor: pointer;
 }
 
 .farm-accounting-light .fa-btn-primary:hover {
-  background: hsl(221 83% 28%);
+  background: var(--green-mid);
 }
 
 .farm-accounting-light .fa-tablist-wrap {
@@ -372,7 +407,7 @@ h6,
   flex-wrap: nowrap;
   gap: 4px;
   padding: 4px;
-  background: hsl(214 32% 93%);
+  background: var(--fa-tab-track);
   border-radius: 10px;
   min-height: 44px;
   align-items: center;
@@ -385,7 +420,7 @@ h6,
   padding: 8px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: hsl(215 16% 40%);
+  color: var(--fa-tab-text);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -394,9 +429,9 @@ h6,
 }
 
 .farm-accounting-light .fa-tab.active {
-  background: #fff;
-  color: hsl(222 47% 11%);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  background: var(--fa-tab-active-bg);
+  color: var(--fa-tab-active-text);
+  box-shadow: var(--fa-tab-active-shadow);
 }
 
 .farm-accounting-light .fa-panel {
@@ -405,7 +440,7 @@ h6,
 
 /* Major sections: horizontal rules only (no boxed cards) */
 .farm-accounting-light #fa-panel > .fa-blurb + .fa-report-preamble {
-  border-top: 1px solid hsl(214 32% 88%);
+  border-top: 1px solid var(--fa-rule);
   padding-top: 12px;
   margin-top: 0;
 }
@@ -417,7 +452,7 @@ h6,
 .farm-accounting-light #fa-panel > .fa-blurb + .fa-kpi-grid,
 .farm-accounting-light #fa-panel > .fa-kpi-grid + .fa-chart-row,
 .farm-accounting-light #fa-panel > .fa-chart-row + .fa-card {
-  border-top: 1px solid hsl(214 32% 88%);
+  border-top: 1px solid var(--fa-rule);
   padding-top: 16px;
   margin-top: 0;
 }
@@ -444,7 +479,7 @@ h6,
 }
 
 .farm-accounting-light .fa-kpi {
-  background: hsl(210 40% 99%);
+  background: var(--fa-panel);
   border-radius: 0;
   border: none;
   box-shadow: none;
@@ -474,24 +509,24 @@ h6,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: hsl(215 16% 45%);
+  color: var(--fa-text-2);
   margin-bottom: 6px;
 }
 
 .farm-accounting-light .fa-kpi-v {
   font-size: 1.25rem;
   font-weight: 800;
-  color: hsl(222 47% 11%);
+  color: var(--fa-text);
 }
 
 .farm-accounting-light .fa-kpi-v-blue {
-  color: #1e40af;
+  color: var(--fa-kpi-v-blue);
 }
 .farm-accounting-light .fa-kpi-v-orange {
-  color: #ea580c;
+  color: var(--fa-kpi-v-orange);
 }
 .farm-accounting-light .fa-kpi-v-amber {
-  color: #b45309;
+  color: var(--fa-kpi-v-amber);
 }
 
 .farm-accounting-light .fa-kpi-sub {
@@ -509,13 +544,13 @@ h6,
 }
 
 .farm-accounting-light .fa-kpi-f-green {
-  color: #059669;
+  color: var(--fa-kpi-f-green);
 }
 .farm-accounting-light .fa-kpi-f-red {
-  color: #dc2626;
+  color: var(--fa-kpi-f-red);
 }
 .farm-accounting-light .fa-kpi-f-muted {
-  color: hsl(215 16% 45%);
+  color: var(--fa-text-2);
 }
 
 .farm-accounting-light .fa-chart-row {
@@ -533,14 +568,14 @@ h6,
   }
 
   .farm-accounting-light .fa-chart-wide {
-    border-right: 1px solid hsl(214 32% 90%);
+    border-right: 1px solid var(--fa-border);
     padding-right: 12px;
   }
 }
 
 @media (max-width: 1099px) {
   .farm-accounting-light .fa-chart-wide {
-    border-bottom: 1px solid hsl(214 32% 90%);
+    border-bottom: 1px solid var(--fa-border);
     padding-bottom: 12px;
     margin-bottom: 12px;
   }
@@ -565,12 +600,12 @@ h6,
 .farm-accounting-light .fa-card-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: hsl(222 47% 11%);
+  color: var(--fa-text);
 }
 
 .farm-accounting-light .fa-card-desc {
   font-size: 11px;
-  color: hsl(215 16% 45%);
+  color: var(--fa-text-2);
   margin-top: 2px;
 }
 
@@ -612,7 +647,7 @@ h6,
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(215 16% 55%);
+  color: var(--fa-text-3);
   font-size: 13px;
 }
 
@@ -640,7 +675,7 @@ h6,
 
 .farm-accounting-light .fa-legend-name {
   flex: 1;
-  color: hsl(215 19% 35%);
+  color: var(--fa-text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -649,12 +684,12 @@ h6,
 
 .farm-accounting-light .fa-legend-val {
   font-weight: 600;
-  color: hsl(222 47% 15%);
+  color: var(--fa-text);
 }
 
 .farm-accounting-light .fa-blurb {
   font-size: 12px;
-  color: hsl(215 16% 40%);
+  color: var(--fa-text-2);
   margin: 0 0 14px;
   line-height: 1.5;
 }
@@ -670,8 +705,8 @@ h6,
 }
 
 .farm-accounting-light .fa-table thead tr {
-  border-bottom: 1px solid hsl(214 32% 91%);
-  background: hsl(210 40% 98%);
+  border-bottom: 1px solid var(--fa-border);
+  background: var(--fa-overlay);
 }
 
 .farm-accounting-light .fa-table th {
@@ -681,7 +716,7 @@ h6,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: hsl(215 16% 45%);
+  color: var(--fa-text-2);
 }
 
 .farm-accounting-light .fa-th-num {
@@ -689,41 +724,41 @@ h6,
 }
 
 .farm-accounting-light .fa-tr:hover {
-  background: hsl(210 40% 99%);
+  background: var(--fa-row-hover);
 }
 
 .farm-accounting-light .fa-td {
   padding: 10px 14px;
-  color: hsl(215 19% 35%);
-  border-bottom: 1px solid hsl(214 32% 94%);
+  color: var(--fa-text-2);
+  border-bottom: 1px solid var(--fa-border-soft);
   vertical-align: middle;
 }
 
 .farm-accounting-light .fa-td-desc {
   padding: 10px 14px;
-  color: hsl(215 16% 38%);
+  color: var(--fa-text-2);
   max-width: 220px;
-  border-bottom: 1px solid hsl(214 32% 94%);
+  border-bottom: 1px solid var(--fa-border-soft);
 }
 
 .farm-accounting-light .fa-td-num {
   text-align: right;
   font-weight: 600;
   padding: 10px 14px;
-  border-bottom: 1px solid hsl(214 32% 94%);
+  border-bottom: 1px solid var(--fa-border-soft);
 }
 
 .farm-accounting-light .fa-num-rev {
-  color: #047857;
+  color: var(--fa-rev);
 }
 .farm-accounting-light .fa-num-exp {
-  color: #b91c1c;
+  color: var(--fa-exp);
 }
 
 .farm-accounting-light .fa-td-empty {
   text-align: center;
   padding: 36px 16px !important;
-  color: hsl(215 16% 55%) !important;
+  color: var(--fa-text-3) !important;
   border: none !important;
 }
 
@@ -736,18 +771,55 @@ h6,
 }
 
 .farm-accounting-light .fa-badge-rev {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--fa-badge-rev-bg);
+  color: var(--fa-badge-rev-text);
 }
 
 .farm-accounting-light .fa-badge-exp {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--fa-badge-exp-bg);
+  color: var(--fa-badge-exp-text);
 }
 
 [data-theme="light"] .farm-accounting-light {
+  --fa-sheet: hsl(210 40% 99%);
+  --fa-panel: #fff;
+  --fa-overlay: hsl(210 40% 98%);
+  --fa-text: hsl(222 47% 11%);
+  --fa-text-2: hsl(215 16% 45%);
+  --fa-text-3: hsl(215 16% 55%);
+  --fa-border: hsl(214 32% 88%);
+  --fa-border-soft: hsl(214 32% 94%);
+  --fa-rule: hsl(214 32% 88%);
+  --fa-chip-bg: hsl(214 56% 97%);
+  --fa-chip-text: hsl(221 83% 32%);
+  --fa-chip-border: hsl(214 32% 85%);
+  --fa-chip-hover: hsl(221 83% 94%);
+  --fa-tab-track: hsl(214 32% 93%);
+  --fa-tab-text: hsl(215 16% 40%);
+  --fa-tab-active-bg: #fff;
+  --fa-tab-active-text: hsl(222 47% 11%);
+  --fa-tab-active-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  --fa-accent: hsl(221 83% 35%);
+  --fa-btn-text: hsl(222 47% 25%);
+  --fa-row-hover: hsl(210 40% 99%);
+  --fa-rev: #047857;
+  --fa-exp: #b91c1c;
+  --fa-kpi-f-green: #059669;
+  --fa-kpi-f-red: #dc2626;
+  --fa-kpi-v-blue: #1e40af;
+  --fa-kpi-v-orange: #ea580c;
+  --fa-kpi-v-amber: #b45309;
+  --fa-badge-rev-bg: #d1fae5;
+  --fa-badge-rev-text: #065f46;
+  --fa-badge-exp-bg: #fee2e2;
+  --fa-badge-exp-text: #991b1b;
+
   background: #fff;
   border: none;
+}
+
+[data-theme="light"] .farm-accounting-light .fa-input-date {
+  color-scheme: light;
 }
 
 /* SACCO Accounting tab — same sheet treatment (no section-card boxes) */

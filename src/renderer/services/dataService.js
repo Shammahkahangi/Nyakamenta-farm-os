@@ -479,6 +479,7 @@ const dataService = {
         block_id,
         source_module,
         source_id,
+        cost_center,
     }) {
         const pm = this.normalizePaymentMethod(payment_method);
         const mak =
@@ -490,11 +491,22 @@ const dataService = {
         const smod =
             source_module && String(source_module).trim() ? String(source_module).trim() : null;
         const sid = source_id != null && String(source_id).trim() !== '' ? String(source_id).trim() : null;
+        const cc = this.normalizeCostCenter(cost_center);
         return await getEstateApi().execute(
-            `INSERT INTO finance_items (category, description, amount, date, type, payment_method, maintenance_activity_key, block_id, source_module, source_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [category, description, amount, date, type, pm, mak, bid, smod, sid]
+            `INSERT INTO finance_items (category, description, amount, date, type, payment_method, maintenance_activity_key, block_id, source_module, source_id, cost_center)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [category, description, amount, date, type, pm, mak, bid, smod, sid, cc]
         );
+    },
+
+    normalizeCostCenter(value) {
+        const v = String(value || 'farm').trim().toLowerCase().replace(/\s+/g, '_');
+        if (v === 'ruhunga_farm_house' || v === 'ruhunga' || v === 'farm_house') return 'ruhunga_farm_house';
+        return 'farm';
+    },
+
+    costCenterLabel(value) {
+        return value === 'ruhunga_farm_house' ? 'Ruhunga farm house' : 'Estate (farm)';
     },
 
     /** Remove mirrored ledger lines (e.g. before re-linking a source record). */
@@ -2926,6 +2938,11 @@ const dataService = {
 
 // ── Finance Categories ────────────────────────────────────────
 // Uganda Robusta farm expense & revenue taxonomy
+export const FINANCE_COST_CENTERS = [
+    { id: 'farm', label: 'Estate (farm)' },
+    { id: 'ruhunga_farm_house', label: 'Ruhunga farm house' },
+];
+
 export const FINANCE_CATEGORIES = {
     Expense: [
         // Field Operations
@@ -2977,6 +2994,32 @@ export const FINANCE_CATEGORIES = {
         { name: 'Other Revenue', group: 'Other' },
     ],
 };
+
+/** Categories for Ruhunga farm house (non-field / household & guest costs). */
+export const RUHUNGA_FARM_HOUSE_CATEGORIES = {
+    Expense: [
+        { name: 'Utilities', group: 'Utilities' },
+        { name: 'Housekeeping & cleaning', group: 'Housekeeping' },
+        { name: 'Food & catering', group: 'Food & catering' },
+        { name: 'House repairs', group: 'Repairs & maintenance' },
+        { name: 'Furnishings', group: 'Furnishings' },
+        { name: 'House staff', group: 'House staff' },
+        { name: 'Guest services', group: 'Guest services' },
+        { name: 'Other house expense', group: 'Other' },
+    ],
+    Revenue: [
+        { name: 'Guest stay / rental', group: 'Guest stay / rental' },
+        { name: 'Other house income', group: 'Other' },
+    ],
+};
+
+export function financeCategoriesForCostCenter(costCenter) {
+    const cc = String(costCenter || 'farm').trim().toLowerCase();
+    if (cc === 'ruhunga_farm_house' || cc === 'ruhunga' || cc === 'farm_house') {
+        return RUHUNGA_FARM_HOUSE_CATEGORIES;
+    }
+    return FINANCE_CATEGORIES;
+}
 
 // ── Inventory Categories ──────────────────────────────────────
 export const INVENTORY_CATEGORIES = [

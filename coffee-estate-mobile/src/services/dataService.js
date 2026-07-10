@@ -479,6 +479,7 @@ const dataService = {
         block_id,
         source_module,
         source_id,
+        cost_center,
     }) {
         const pm = this.normalizePaymentMethod(payment_method);
         const mak =
@@ -490,10 +491,15 @@ const dataService = {
         const smod =
             source_module && String(source_module).trim() ? String(source_module).trim() : null;
         const sid = source_id != null && String(source_id).trim() !== '' ? String(source_id).trim() : null;
+        const ccRaw = String(cost_center || 'farm').trim().toLowerCase().replace(/\s+/g, '_');
+        const cc =
+            ccRaw === 'ruhunga_farm_house' || ccRaw === 'ruhunga' || ccRaw === 'farm_house'
+                ? 'ruhunga_farm_house'
+                : 'farm';
         return await getEstateApi().execute(
-            `INSERT INTO finance_items (category, description, amount, date, type, payment_method, maintenance_activity_key, block_id, source_module, source_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [category, description, amount, date, type, pm, mak, bid, smod, sid]
+            `INSERT INTO finance_items (category, description, amount, date, type, payment_method, maintenance_activity_key, block_id, source_module, source_id, cost_center)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [category, description, amount, date, type, pm, mak, bid, smod, sid, cc]
         );
     },
 

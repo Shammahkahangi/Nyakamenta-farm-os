@@ -552,6 +552,10 @@ app.use(express.static(publicDir));
 app.use('/src', express.static(path.join(__dirname, 'src')));
 app.use('/styles', express.static(path.join(__dirname, 'styles')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/node_modules/docx', express.static(path.join(__dirname, 'node_modules/docx')));
+app.use('/node_modules/chart.js', express.static(path.join(__dirname, 'node_modules/chart.js')));
+app.use('/node_modules/@kurkle', express.static(path.join(__dirname, 'node_modules/@kurkle')));
+app.use('/node_modules/xlsx', express.static(path.join(__dirname, 'node_modules/xlsx')));
 
 app.use((req, res) => {
   if (req.path.startsWith('/api')) {

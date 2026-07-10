@@ -246,4 +246,4 @@ async function renderDomesticDispatch(container) {
   });
 }
 
-export { renderDomesticDispatch };
+export { renderDomesticDispatch, openAddDispatchModal };
