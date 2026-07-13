@@ -732,6 +732,7 @@ function renderCashBookHtml(items, from, to) {
         ${item.type === 'Revenue' ? '+' : '−'}${dataService.formatLedgerUgx(amt)}
       </td>
       <td class="fa-td-num">${dataService.formatCurrency(bal)}</td>
+      <td class="fa-td fa-td-actions">${financeEntryDeleteBtn(item)}</td>
     </tr>`;
     })
     .join('');
@@ -756,13 +757,13 @@ function renderCashBookHtml(items, from, to) {
         <table class="fa-table">
           <thead>
             <tr>
-              <th>Date</th><th>Attributed to</th><th>Description</th><th>Method</th><th class="fa-th-num">Movement</th><th class="fa-th-num">Balance</th>
+              <th>Date</th><th>Attributed to</th><th>Description</th><th>Method</th><th class="fa-th-num">Movement</th><th class="fa-th-num">Balance</th><th class="fa-th-actions"> </th>
             </tr>
           </thead>
           <tbody>
             ${
               rows ||
-              `<tr><td colspan="6" class="fa-td-empty">No ledger lines in this date range — widen the period above or add entries.</td></tr>`
+              `<tr><td colspan="7" class="fa-td-empty">No ledger lines in this date range — widen the period above or add entries.</td></tr>`
             }
           </tbody>
         </table>
@@ -1311,10 +1312,19 @@ async function bindOverviewCharts(panel, monthly, expensePie) {
   }
 }
 
+function financeEntryDeleteBtn(item) {
+  const id = Number(item?.id);
+  if (!Number.isFinite(id) || id <= 0) return '';
+  const auto = item?.source_module ? '1' : '0';
+  return `<button type="button" class="btn btn-ghost btn-sm fa-delete-entry" data-finance-id="${id}" data-finance-auto="${auto}" title="Delete entry" aria-label="Delete entry" style="color:var(--red-text);padding:4px 6px;">
+    <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+  </button>`;
+}
+
 function renderJournalTable(items, title, emptyMsg) {
   const rows =
     items.length === 0
-      ? `<tr><td colspan="7" class="fa-td-empty">${emptyMsg}</td></tr>`
+      ? `<tr><td colspan="8" class="fa-td-empty">${emptyMsg}</td></tr>`
       : items
           .map(
             (item) => `
@@ -1328,6 +1338,7 @@ function renderJournalTable(items, title, emptyMsg) {
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
         ${item.type === 'Revenue' ? '+' : '−'}${dataService.formatLedgerUgx(Number(item.amount))}
       </td>
+      <td class="fa-td fa-td-actions">${financeEntryDeleteBtn(item)}</td>
     </tr>`
           )
           .join('');
@@ -1343,7 +1354,7 @@ function renderJournalTable(items, title, emptyMsg) {
         <table class="fa-table">
           <thead>
             <tr>
-              <th>Date</th><th>Type</th><th>Attributed to</th><th>Category</th><th>Description</th><th>Method</th><th class="fa-th-num">Amount</th>
+              <th>Date</th><th>Type</th><th>Attributed to</th><th>Category</th><th>Description</th><th>Method</th><th class="fa-th-num">Amount</th><th class="fa-th-actions"> </th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -1467,6 +1478,38 @@ async function renderFinance(container) {
     if (t.closest('#fa-add-entry')) {
       e.preventDefault();
       openAddTransactionModal(() => schedulePaint()).catch(() => {});
+      return;
+    }
+    const delBtn = t.closest('.fa-delete-entry');
+    if (delBtn && shell.contains(delBtn)) {
+      e.preventDefault();
+      const id = Number(delBtn.getAttribute('data-finance-id'));
+      if (!Number.isFinite(id) || id <= 0) return;
+      const row = (exportCtx.items || []).find((i) => Number(i.id) === id);
+      const typeLabel = row?.type || 'ledger';
+      const desc = String(row?.description || '').trim() || 'This entry';
+      const amt =
+        row != null ? dataService.formatCurrency(Number(row.amount) || 0) : '';
+      const auto = delBtn.getAttribute('data-finance-auto') === '1';
+      const autoNote = auto
+        ? '\n\nThis line was auto-posted from another module (payroll, dispatch, field ops, etc.). It may reappear if that source is repaired or synced again.'
+        : '';
+      if (
+        !confirm(
+          `Delete this ${typeLabel} entry?\n\n${desc}${amt ? `\n${amt}` : ''}${autoNote}`
+        )
+      ) {
+        return;
+      }
+      void (async () => {
+        try {
+          await dataService.deleteFinanceItem(id);
+          showToast('Ledger entry deleted.');
+          schedulePaint();
+        } catch (err) {
+          showToast(`Could not delete: ${String(err?.message || err)}`);
+        }
+      })();
       return;
     }
     if (t.closest('#fa-add-dispatch')) {

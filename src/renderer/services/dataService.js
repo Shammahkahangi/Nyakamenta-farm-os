@@ -499,6 +499,13 @@ const dataService = {
         );
     },
 
+    /** Delete a single ledger line by id (expense, revenue, or any finance_items row). */
+    async deleteFinanceItem(id) {
+        const nid = Number(id);
+        if (!Number.isFinite(nid) || nid <= 0) throw new Error('Invalid ledger entry id.');
+        return await getEstateApi().execute('DELETE FROM finance_items WHERE id = ?', [nid]);
+    },
+
     normalizeCostCenter(value) {
         const v = String(value || 'farm').trim().toLowerCase().replace(/\s+/g, '_');
         if (v === 'ruhunga_farm_house' || v === 'ruhunga' || v === 'farm_house') return 'ruhunga_farm_house';

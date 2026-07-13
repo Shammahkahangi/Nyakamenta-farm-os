@@ -748,6 +748,18 @@ h6,
   border-bottom: 1px solid var(--fa-border-soft);
 }
 
+.farm-accounting-light .fa-td-actions {
+  width: 44px;
+  text-align: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--fa-border-soft);
+  white-space: nowrap;
+}
+
+.farm-accounting-light .fa-th-actions {
+  width: 44px;
+}
+
 .farm-accounting-light .fa-num-rev {
   color: var(--fa-rev);
 }
