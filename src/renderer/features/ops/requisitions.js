@@ -106,14 +106,21 @@ export async function renderRequisitions(container) {
         <!-- Right Column: Requisition History Feed -->
         <div style="background: var(--bg-card, #ffffff); border-radius: 14px; border: 1px solid var(--border-color, #e2e8f0); padding: 22px; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);">
           
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <h3 style="font-size: 15px; font-weight: 700; color: var(--text-primary, #0f172a); margin: 0; display: flex; align-items: center; gap: 8px;">
               <span class="material-symbols-outlined" style="font-size: 20px; color: var(--text-muted, #64748b);">history</span> Saved Requisitions
             </h3>
             <span style="font-size: 11px; font-weight: 600; color: var(--text-muted, #64748b); background: var(--bg-surface, #f1f5f9); padding: 3px 8px; border-radius: 12px;" id="history-count-badge">0 saved</span>
           </div>
 
-          <div id="requisitions-history-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 620px; overflow-y: auto; padding-right: 4px;">
+          <!-- Month Filter Selector -->
+          <div style="margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+            <select id="req-month-filter" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color, #cbd5e1); font-size: 12.5px; background: var(--bg-surface, #f8fafc); color: var(--text-primary, #0f172a); font-weight: 600; cursor: pointer;">
+              <option value="all">All Months</option>
+            </select>
+          </div>
+
+          <div id="requisitions-history-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 560px; overflow-y: auto; padding-right: 4px;">
             <div style="text-align: center; padding: 30px 10px; color: var(--text-muted, #94a3b8); font-size: 13px;">
               <span class="material-symbols-outlined" style="font-size: 32px; display: block; margin: 0 auto 8px; opacity: 0.5;">folder_open</span>
               No requisitions saved yet.
@@ -410,78 +417,124 @@ async function postCurrentRequisitionToExpenses(container) {
   }
 }
 
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function formatMonthLabel(ym) {
+  const [y, m] = ym.split('-');
+  const idx = parseInt(m, 10) - 1;
+  return `${MONTH_NAMES[idx] || m} ${y}`;
+}
+
 async function loadHistoryList(container) {
   const listEl = container.querySelector('#requisitions-history-list');
   const countBadge = container.querySelector('#history-count-badge');
+  const monthFilterSelect = container.querySelector('#req-month-filter');
   if (!listEl) return;
 
   try {
-    const requisitions = await dataService.getRequisitions();
-    if (countBadge) countBadge.textContent = `${requisitions ? requisitions.length : 0} saved`;
+    const requisitions = (await dataService.getRequisitions()) || [];
 
-    if (!requisitions || requisitions.length === 0) {
-      listEl.innerHTML = `
-        <div style="text-align: center; padding: 30px 10px; color: var(--text-muted, #94a3b8); font-size: 13px;">
-          <span class="material-symbols-outlined" style="font-size: 32px; display: block; margin: 0 auto 8px; opacity: 0.5;">folder_open</span>
-          No requisitions saved yet.
-        </div>`;
-      return;
+    // Extract unique months (YYYY-MM) in descending order
+    const monthsSet = new Set();
+    requisitions.forEach(r => {
+      if (r.date && r.date.length >= 7) {
+        monthsSet.add(r.date.slice(0, 7));
+      }
+    });
+
+    const sortedMonths = Array.from(monthsSet).sort().reverse();
+    const currentSelectedMonth = monthFilterSelect ? monthFilterSelect.value : 'all';
+
+    if (monthFilterSelect) {
+      monthFilterSelect.innerHTML = `<option value="all">All Months (${requisitions.length})</option>` +
+        sortedMonths.map(ym => `<option value="${ym}">${formatMonthLabel(ym)}</option>`).join('');
+
+      if (sortedMonths.includes(currentSelectedMonth) || currentSelectedMonth === 'all') {
+        monthFilterSelect.value = currentSelectedMonth;
+      }
     }
 
-    listEl.innerHTML = requisitions.map(req => `
-      <div style="background: var(--bg-surface, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px; transition: all 0.15s ease;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-          <div>
-            <strong style="color: var(--text-primary, #0f172a); font-size: 13.5px; display: block; margin-bottom: 2px;">${esc(req.title || 'Requisition')}</strong>
-            <div style="font-size: 11px; color: var(--text-muted, #64748b);">${req.date} · ${req.items ? req.items.length : 0} items</div>
+    const renderFilteredList = () => {
+      const selectedMonth = monthFilterSelect ? monthFilterSelect.value : 'all';
+      const filtered = selectedMonth === 'all'
+        ? requisitions
+        : requisitions.filter(r => r.date && r.date.startsWith(selectedMonth));
+
+      if (countBadge) {
+        countBadge.textContent = `${filtered.length} saved`;
+      }
+
+      if (!filtered || filtered.length === 0) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 30px 10px; color: var(--text-muted, #94a3b8); font-size: 13px;">
+            <span class="material-symbols-outlined" style="font-size: 32px; display: block; margin: 0 auto 8px; opacity: 0.5;">folder_open</span>
+            No requisitions found for this month.
+          </div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(req => `
+        <div style="background: var(--bg-surface, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px; transition: all 0.15s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+            <div>
+              <strong style="color: var(--text-primary, #0f172a); font-size: 13.5px; display: block; margin-bottom: 2px;">${esc(req.title || 'Requisition')}</strong>
+              <div style="font-size: 11px; color: var(--text-muted, #64748b);">${req.date} · ${req.items ? req.items.length : 0} items</div>
+            </div>
+            <span style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 13px;">${dataService.formatCurrency(req.total_amount)}</span>
           </div>
-          <span style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 13px;">${dataService.formatCurrency(req.total_amount)}</span>
+
+          <div style="display: flex; gap: 6px; margin-top: 12px; border-top: 1px dashed var(--border-color, #e2e8f0); padding-top: 10px;">
+            <button type="button" class="btn-load-req" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-primary, #1e293b); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 15px;">edit</span> Edit
+            </button>
+
+            <button type="button" class="btn-dl-excel" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #16a34a; background: #f0fdf4; color: #15803d; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 15px;">file_download</span> Excel
+            </button>
+
+            <button type="button" class="btn-del-req" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #fca5a5; background: #fef2f2; color: #dc2626; cursor: pointer; margin-left: auto; display: flex; align-items: center; justify-content: center;">
+              <span class="material-symbols-outlined" style="font-size: 15px;">delete</span>
+            </button>
+          </div>
         </div>
+      `).join('');
 
-        <div style="display: flex; gap: 6px; margin-top: 12px; border-top: 1px dashed var(--border-color, #e2e8f0); padding-top: 10px;">
-          <button type="button" class="btn-load-req" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-primary, #1e293b); cursor: pointer; display: flex; align-items: center; gap: 4px;">
-            <span class="material-symbols-outlined" style="font-size: 15px;">edit</span> Edit
-          </button>
-
-          <button type="button" class="btn-dl-excel" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #16a34a; background: #f0fdf4; color: #15803d; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-            <span class="material-symbols-outlined" style="font-size: 15px;">file_download</span> Excel
-          </button>
-
-          <button type="button" class="btn-del-req" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #fca5a5; background: #fef2f2; color: #dc2626; cursor: pointer; margin-left: auto; display: flex; align-items: center; justify-content: center;">
-            <span class="material-symbols-outlined" style="font-size: 15px;">delete</span>
-          </button>
-        </div>
-      </div>
-    `).join('');
-
-    // Attach listeners
-    listEl.querySelectorAll('.btn-load-req').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = Number(btn.dataset.id);
-        const req = requisitions.find(r => r.id === id);
-        if (req) loadRequisitionIntoEditor(req);
+      // Attach listeners
+      listEl.querySelectorAll('.btn-load-req').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id);
+          const req = requisitions.find(r => r.id === id);
+          if (req) loadRequisitionIntoEditor(req);
+        });
       });
-    });
 
-    listEl.querySelectorAll('.btn-dl-excel').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = Number(btn.dataset.id);
-        const req = requisitions.find(r => r.id === id);
-        if (req) exportRequisitionToExcel(req);
+      listEl.querySelectorAll('.btn-dl-excel').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id);
+          const req = requisitions.find(r => r.id === id);
+          if (req) exportRequisitionToExcel(req);
+        });
       });
-    });
 
-    listEl.querySelectorAll('.btn-del-req').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = Number(btn.dataset.id);
-        if (confirm('Delete this requisition?')) {
-          await dataService.deleteRequisition(id);
-          showToast('Requisition deleted.');
-          if (activeRequisitionId === id) resetEditor();
-          await loadHistoryList(container);
-        }
+      listEl.querySelectorAll('.btn-del-req').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.dataset.id);
+          if (confirm('Delete this requisition?')) {
+            await dataService.deleteRequisition(id);
+            showToast('Requisition deleted.');
+            if (activeRequisitionId === id) resetEditor();
+            await loadHistoryList(container);
+          }
+        });
       });
-    });
+    };
+
+    renderFilteredList();
+
+    if (monthFilterSelect && !monthFilterSelect._hasChangeListener) {
+      monthFilterSelect._hasChangeListener = true;
+      monthFilterSelect.addEventListener('change', renderFilteredList);
+    }
 
   } catch (err) {
     console.error("History load error:", err);
