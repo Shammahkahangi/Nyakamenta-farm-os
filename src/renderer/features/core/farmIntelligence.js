@@ -56,49 +56,113 @@ async function ensureChartJs() {
 
 async function exportFarmXlsx(payload) {
   const XLSX = await import('../../../../node_modules/xlsx/xlsx.mjs');
-  const { blocks, batches, financeItems, contracts } = payload;
+  const { blocks = [], batches = [], financeItems = [], contracts = [] } = payload;
+
+  // Fetch requisitions for comprehensive report
+  const requisitions = (await dataService.getRequisitions().catch(() => [])) || [];
+
   const wb = XLSX.utils.book_new();
 
+  // 1. Executive Summary Sheet
+  const totalRev = financeItems.filter(i => i.type === 'Revenue').reduce((a, b) => a + (Number(b.amount) || 0), 0);
+  const totalExp = financeItems.filter(i => i.type === 'Expense').reduce((a, b) => a + (Number(b.amount) || 0), 0);
+  const totalAcres = blocks.reduce((a, b) => a + (Number(b.acres) || 0), 0);
+  const totalPlants = blocks.reduce((a, b) => a + (Number(b.plant_count) || 0), 0);
+  const totalReqsAmt = requisitions.reduce((a, b) => a + (Number(b.total_amount) || 0), 0);
+
+  const execRows = [
+    { Metric: 'Total Estate Acreage', Value: `${totalAcres} Acres` },
+    { Metric: 'Total Coffee Trees / Plants', Value: `${totalPlants.toLocaleString()} Plants` },
+    { Metric: 'Total Revenue (Gross)', Value: `UGX ${totalRev.toLocaleString()}` },
+    { Metric: 'Total Expenses (Gross)', Value: `UGX ${totalExp.toLocaleString()}` },
+    { Metric: 'Net Financial Position', Value: `UGX ${(totalRev - totalExp).toLocaleString()}` },
+    { Metric: 'Total Approved Requisitions', Value: `UGX ${totalReqsAmt.toLocaleString()} (${requisitions.length} Requisitions)` },
+    { Metric: 'Total Field Blocks Count', Value: `${blocks.length} Blocks` },
+    { Metric: 'Total Processing Batches', Value: `${batches.length} Batches` },
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(execRows), 'Executive_Summary');
+
+  // 2. Field Operations & Blocks Sheet
   const blockRows = blocks.map((b) => ({
-    Block: b.name,
-    Acres: b.acres || 0,
-    Plants: b.plant_count || 0,
-    KgProcessed: b.kgProcessed || 0,
-    Status: b.status || '',
+    'Block Name': b.name || `Block #${b.id}`,
+    'Acres': Number(b.acres) || 0,
+    'Plant Count': Number(b.plant_count) || 0,
+    'Density (Plants/Acre)': b.acres > 0 ? Math.round(b.plant_count / b.acres) : 0,
+    'Total Processed (Kg)': Number(b.kgProcessed) || 0,
+    'Status': b.status || 'Active',
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blockRows.length ? blockRows : [{ Note: 'No blocks' }]), 'Blocks');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blockRows.length ? blockRows : [{ Note: 'No blocks recorded' }]), 'Field_Operations');
 
-  const batchRows = batches.map((b) => ({
-    Id: b.id,
-    Block: b.blockName || b.block_id,
-    Stage: b.stage,
-    KgIn: b.kgIn,
-    KgOut: b.kgOut,
-    Conversion: b.conversion,
-    Status: b.status,
-    Date: b.date,
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(batchRows.length ? batchRows : [{ Note: 'No batches' }]), 'Batches');
+  // 3. Approved Requisitions Sheet
+  const reqRows = [];
+  requisitions.forEach(r => {
+    if (r.items && r.items.length) {
+      r.items.forEach(it => {
+        reqRows.push({
+          'Req Date': r.date,
+          'Requisition Title': r.title,
+          'Item Description': it.item,
+          'Qty': it.qty || '',
+          'Unit Cost (UGX)': Number(it.unit_cost) || 0,
+          'Total Item Cost (UGX)': Number(it.amount) || 0,
+          'Status': r.status || 'Approved'
+        });
+      });
+    } else {
+      reqRows.push({
+        'Req Date': r.date,
+        'Requisition Title': r.title,
+        'Item Description': 'Total Requisition',
+        'Qty': '',
+        'Unit Cost (UGX)': 0,
+        'Total Item Cost (UGX)': Number(r.total_amount) || 0,
+        'Status': r.status || 'Approved'
+      });
+    }
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reqRows.length ? reqRows : [{ Note: 'No requisitions' }]), 'Requisitions');
 
+  // 4. Comprehensive Farm Ledger Sheet
   const finRows = financeItems.map((i) => ({
-    Date: i.date,
-    Category: i.category,
-    Description: i.description,
-    Amount: i.amount,
-    Type: i.type,
+    'Date': i.date,
+    'Cost Center': i.cost_center || 'farm',
+    'Category': i.category,
+    'Description': i.description,
+    'Type': i.type,
+    'Amount (UGX)': Number(i.amount) || 0,
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(finRows.length ? finRows : [{ Note: 'No ledger lines' }]), 'Farm_ledger');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(finRows.length ? finRows : [{ Note: 'No ledger entries' }]), 'Farm_Ledger');
 
+  // 5. Processing & Batches Sheet
+  const batchRows = batches.map((b) => ({
+    'Batch ID': b.id,
+    'Block': b.blockName || b.block_id,
+    'Stage': b.stage,
+    'Cherry In (Kg)': Number(b.kgIn) || 0,
+    'Green Coffee Out (Kg)': Number(b.kgOut) || 0,
+    'Conversion Ratio': b.conversion || 0,
+    'Status': b.status,
+    'Batch Date': b.date,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(batchRows.length ? batchRows : [{ Note: 'No batches' }]), 'Processing_&_Batches');
+
+  // 6. Coffee Sales & Dispatch Sheet
   const contractRows = contracts.map((c) => ({
-    Id: c.id,
-    Buyer: c.buyer,
-    NetKg: c.netKg,
-    Value: c.totalValue,
-    Status: c.status,
+    'Dispatch ID': c.id,
+    'Buyer / Receiver': c.buyer,
+    'Net Kg': Number(c.netKg) || 0,
+    'Total Value (UGX)': Number(c.totalValue) || 0,
+    'Dispatch Date': c.etd || c.date || '',
+    'Status': c.status,
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contractRows.length ? contractRows : [{ Note: 'No dispatches' }]), 'Dispatch');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contractRows.length ? contractRows : [{ Note: 'No dispatches' }]), 'Coffee_Sales');
 
-  XLSX.writeFile(wb, `Farm_Intelligence_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const fileName = `Comprehensive_Farm_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  if (typeof XLSX.writeFileXLSX === 'function') {
+    XLSX.writeFileXLSX(wb, fileName);
+  } else {
+    XLSX.writeFile(wb, fileName, { bookType: 'xlsx' });
+  }
 }
 
 function renderProductionPanel(ctx) {
