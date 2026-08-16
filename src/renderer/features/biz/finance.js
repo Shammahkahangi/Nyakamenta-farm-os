@@ -24,13 +24,27 @@ const PIE_COLORS = ['#1e3a5f', '#2563eb', '#0ea5e9', '#38bdf8', '#7dd3fc', '#c78
 
 /** Gateway-style farm financial reports (single-entry UGX ledger). */
 const ACCOUNTING_SUBTABS = [
-  { id: 'overview', label: 'Financial Overview' },
+  { id: 'overview', label: 'Farm Overview' },
+  { id: 'overview-ruhunga', label: 'Ruhunga Overview' },
   { id: 'general', label: 'General Report' },
   { id: 'income', label: 'Comprehensive Income' },
   { id: 'cashflow', label: 'Cashflow Statement' },
   { id: 'analysis', label: 'Financial Analysis' },
   { id: 'cashbook', label: 'Cash Book' },
 ];
+
+const OVERVIEW_SCOPE = {
+  overview: {
+    costCenter: 'farm',
+    emptyJournal: 'No estate (farm) entries in this range — widen the period or use Add entry.',
+    exportSlug: 'farm_overview',
+  },
+  'overview-ruhunga': {
+    costCenter: 'ruhunga_farm_house',
+    emptyJournal: 'No Ruhunga farm house entries in this range — widen the period or use Add entry.',
+    exportSlug: 'ruhunga_overview',
+  },
+};
 
 const LEGACY_SUBTAB = {
   field: 'income',
@@ -359,6 +373,11 @@ function expenseGroupForCategory(catName) {
 
 function rowCostCenter(row) {
   return dataService.normalizeCostCenter(row?.cost_center);
+}
+
+function filterByCostCenter(items, costCenter) {
+  const cc = dataService.normalizeCostCenter(costCenter);
+  return (items || []).filter((row) => rowCostCenter(row) === cc);
 }
 
 function sumInRangeForCenter(items, fromIso, toIso, type, costCenter) {
@@ -727,7 +746,6 @@ function renderCashBookHtml(items, from, to) {
       <td class="fa-td">${escHtml(item.date)}</td>
       <td class="fa-td">${escHtml(dataService.costCenterLabel(item.cost_center))}</td>
       <td class="fa-td-desc">${escHtml(item.description || '—')}</td>
-      <td class="fa-td">${pmDisplay(item)}</td>
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
         ${item.type === 'Revenue' ? '+' : '−'}${dataService.formatLedgerUgx(amt)}
       </td>
@@ -757,13 +775,13 @@ function renderCashBookHtml(items, from, to) {
         <table class="fa-table">
           <thead>
             <tr>
-              <th>Date</th><th>Attributed to</th><th>Description</th><th>Method</th><th class="fa-th-num">Movement</th><th class="fa-th-num">Balance</th><th class="fa-th-actions"> </th>
+              <th>Date</th><th>Attributed to</th><th>Description</th><th class="fa-th-num">Movement</th><th class="fa-th-num">Balance</th><th class="fa-th-actions"> </th>
             </tr>
           </thead>
           <tbody>
             ${
               rows ||
-              `<tr><td colspan="7" class="fa-td-empty">No ledger lines in this date range — widen the period above or add entries.</td></tr>`
+              `<tr><td colspan="6" class="fa-td-empty">No ledger lines in this date range — widen the period above or add entries.</td></tr>`
             }
           </tbody>
         </table>
@@ -775,6 +793,170 @@ function renderCashBookHtml(items, from, to) {
 function contractDateStr(c) {
   const raw = String(c?.etd || c?.date || '').slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+}
+
+/** Scoped farm or Ruhunga overview — KPIs, charts, expense table, journal (exports scrape this panel). */
+function renderFinancialOverviewHtml({
+  scopedItems,
+  from,
+  to,
+  costCenter,
+  emptyJournal,
+}) {
+  const centerLabel = dataService.costCenterLabel(costCenter);
+  const revP = sumInRange(scopedItems, from, to, 'Revenue');
+  const expP = sumInRange(scopedItems, from, to, 'Expense');
+  const netP = revP - expP;
+  const prevWin = previousPeriodSameLength(from, to);
+  const netPrev = totalsInRange(scopedItems, prevWin.from, prevWin.to).netProfit;
+  const profitTrend =
+    netPrev !== 0 ? ((netP - netPrev) / Math.abs(netPrev)) * 100 : netP > 0 ? 100 : 0;
+  const ytd = ytdTotals(scopedItems);
+  let monthKeys = monthKeysBetweenInclusive(from, to, 24);
+  if (monthKeys.length === 0) {
+    const k = monthKey(`${from}T12:00:00`) || currentYearMonth();
+    monthKeys = [k];
+  }
+  const monthly = aggregateMonthlyForKeys(scopedItems, monthKeys);
+  const expensePie = expenseCategoriesInRange(scopedItems, from, to).slice(0, 12);
+  const rangeHint = formatRangeHint(from, to);
+  const chartMonthsNote =
+    monthKeys.length <= 1 ? '1 month in view' : `${monthKeys.length} months in view`;
+  const revLines = itemsWithDateInRange(scopedItems, from, to).filter((i) => i.type === 'Revenue')
+    .length;
+  const expLines = itemsWithDateInRange(scopedItems, from, to).filter((i) => i.type === 'Expense')
+    .length;
+
+  const expenseTableRows =
+    expensePie.length === 0
+      ? `<tr><td colspan="3" class="fa-td-empty">No expenses attributed to ${escHtml(centerLabel)} in this period.</td></tr>`
+      : expensePie
+          .map(
+            (c) => `
+    <tr class="fa-tr">
+      <td class="fa-td">${escHtml(c.category)}</td>
+      <td class="fa-td-num fa-num-exp">${dataService.formatCurrency(c.amount)}</td>
+      <td class="fa-td-num">${expP > 0 ? ((c.amount / expP) * 100).toFixed(1) : '0.0'}%</td>
+    </tr>`
+          )
+          .join('');
+
+  const blurb =
+    costCenter === 'ruhunga_farm_house'
+      ? `Ruhunga farm house only for ${rangeHint}: revenue, expenses by category, and journal lines tagged Ruhunga. Estate (farm) ledger is on Farm Overview.`
+      : `Estate (farm) operations only for ${rangeHint}: revenue, expenses by category, and journal lines tagged Estate (farm). Ruhunga farm house is on Ruhunga Overview.`;
+
+  const html = `
+    ${reportBlurb(blurb)}
+    <div class="fa-kpi-grid" data-export-title="${escHtml(centerLabel)} summary">
+      <div class="fa-kpi fa-kpi-green">
+        <div class="fa-kpi-h">Revenue (period)</div>
+        <div class="fa-kpi-v">${fmt(revP)}</div>
+        <div class="fa-kpi-f fa-kpi-f-green"><span class="material-symbols-outlined" style="font-size:14px;">north_east</span> ${revLines} lines · ${rangeHint}</div>
+      </div>
+      <div class="fa-kpi fa-kpi-red">
+        <div class="fa-kpi-h">Expenses (period)</div>
+        <div class="fa-kpi-v">${fmt(expP)}</div>
+        <div class="fa-kpi-f fa-kpi-f-red"><span class="material-symbols-outlined" style="font-size:14px;">south_east</span> ${expLines} lines · ${escHtml(centerLabel)}</div>
+      </div>
+      <div class="fa-kpi ${netP >= 0 ? 'fa-kpi-blue' : 'fa-kpi-orange'}">
+        <div class="fa-kpi-h">Net result (period)</div>
+        <div class="fa-kpi-v ${netP >= 0 ? 'fa-kpi-v-blue' : 'fa-kpi-v-orange'}">${fmt(Math.abs(netP))}<span class="fa-kpi-sub"> ${netP >= 0 ? 'profit' : 'loss'}</span></div>
+        <div class="fa-kpi-f ${profitTrend >= 0 ? 'fa-kpi-f-green' : 'fa-kpi-f-red'}">
+          ${profitTrend >= 0 ? '↗' : '↘'} ${Math.abs(profitTrend).toFixed(1)}% vs prior period (same length)
+        </div>
+      </div>
+      <div class="fa-kpi fa-kpi-amber">
+        <div class="fa-kpi-h">YTD net result</div>
+        <div class="fa-kpi-v fa-kpi-v-amber">${fmt(Math.abs(ytd.netProfit))}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${escHtml(centerLabel)} · ${new Date().getFullYear()} year-to-date</div>
+      </div>
+    </div>
+    <div class="fa-kpi-grid" data-export-title="${escHtml(centerLabel)} detail" style="margin-top:0;">
+      <div class="fa-kpi fa-kpi-blue">
+        <div class="fa-kpi-h">${escHtml(centerLabel)} net</div>
+        <div class="fa-kpi-v">${fmt(Math.abs(netP))}<span class="fa-kpi-sub"> ${netP >= 0 ? 'profit' : 'loss'}</span></div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(revP)} · Exp ${fmt(expP)}</div>
+      </div>
+      <div class="fa-kpi fa-kpi-red">
+        <div class="fa-kpi-h">Expense lines</div>
+        <div class="fa-kpi-v">${expLines}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${expensePie.length} categor${expensePie.length === 1 ? 'y' : 'ies'} in period</div>
+      </div>
+    </div>
+    <div class="fa-chart-row">
+      <div class="fa-card fa-chart-wide">
+        <div class="fa-card-head">
+          <div class="fa-card-title">Revenue vs Expenses</div>
+          <div class="fa-card-desc">${chartMonthsNote} — ${escHtml(centerLabel)} · UGX</div>
+        </div>
+        <div class="fa-chart-box"><canvas id="fa-chart-bar"></canvas></div>
+      </div>
+      <div class="fa-card fa-chart-narrow">
+        <div class="fa-card-head">
+          <div class="fa-card-title">Expense breakdown</div>
+          <div class="fa-card-desc">${escHtml(centerLabel)} · selected period by category</div>
+        </div>
+        <div class="fa-pie-wrap">
+          ${expensePie.length === 0 ? `<div class="fa-empty-pie">No ${escHtml(centerLabel)} expenses in this range</div>` : `<div class="fa-chart-box fa-chart-pie"><canvas id="fa-chart-pie"></canvas></div>`}
+          <div class="fa-pie-legend">
+            ${expensePie
+              .slice(0, 5)
+              .map(
+                (c, i) => `
+              <div class="fa-legend-row">
+                <span class="fa-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+                <span class="fa-legend-name">${escHtml(c.category)}</span>
+                <span class="fa-legend-val">${fmt(c.amount)}</span>
+              </div>`
+              )
+              .join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fa-card fa-card-pad0">
+      <div class="fa-card-head">
+        <div>
+          <div class="fa-card-title">Expenses by category</div>
+          <div class="fa-card-desc">${escHtml(centerLabel)} · included in Word / Print download</div>
+        </div>
+      </div>
+      <div class="fa-table-wrap">
+        <table class="fa-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th class="fa-th-num">Amount (UGX)</th>
+              <th class="fa-th-num">Share</th>
+            </tr>
+          </thead>
+          <tbody>${expenseTableRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="fa-card">
+      <div class="fa-card-head">
+        <div class="fa-card-title">Net profit trend</div>
+        <div class="fa-card-desc">${escHtml(centerLabel)} · month-over-month</div>
+      </div>
+      <div class="fa-chart-box fa-chart-area"><canvas id="fa-chart-area"></canvas></div>
+    </div>
+    ${renderJournalTable(
+      [...scopedItems]
+        .filter((i) => !Number.isNaN(new Date(i.date).getTime()))
+        .filter((i) => {
+          const ds = rowDateStr(i);
+          return ds >= from && ds <= to;
+        })
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+        .slice(0, 80),
+      `Journal entries — ${centerLabel}`,
+      emptyJournal
+    )}
+  `;
+
+  return { html, monthly, expensePie, summaryMetrics: { revP, expP, netP, ytd, centerLabel } };
 }
 
 /** All-activity farm report for the selected period (ledger + dispatches + production). */
@@ -1095,23 +1277,9 @@ async function openAddTransactionModal(onSaved) {
             <input type="number" class="form-input" id="tx-amount" placeholder="0" min="0" step="1">
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Payment method</label>
-            <select class="form-select" id="tx-payment">
-              <option value="cash">Cash</option>
-              <option value="mobile_money">Mobile money</option>
-              <option value="bank_transfer">Bank transfer</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Description</label>
-            <input type="text" class="form-input" id="tx-description" placeholder="e.g. Electricity — Ruhunga farm house">
-          </div>
-        </div>
-        <div class="form-group" id="tx-maint-wrap" style="margin-top:4px;">
-          <label class="form-label">Maintenance activity (optional)</label>
-          <select class="form-select" id="tx-maint">${maintOpts}</select>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-input" id="tx-description" placeholder="e.g. Disel for car, Casual worker wages...">
         </div>
         <p id="tx-error" style="color:#b91c1c;font-size:11px;display:none;margin-top:4px;"></p>
       </div>
@@ -1152,10 +1320,9 @@ async function openAddTransactionModal(onSaved) {
     const category = backdrop.querySelector('#tx-category').value;
     const amount = parseFloat(backdrop.querySelector('#tx-amount').value);
     const description = backdrop.querySelector('#tx-description').value.trim();
-    const payment_method = backdrop.querySelector('#tx-payment').value;
+    const payment_method = 'cash';
     const cost_center = centerSel.value || 'farm';
-    const maintenance_activity_key =
-      cost_center === 'farm' ? (backdrop.querySelector('#tx-maint')?.value || '').trim() : '';
+    const maintenance_activity_key = undefined;
     const errEl = backdrop.querySelector('#tx-error');
 
     if (!description || isNaN(amount) || amount <= 0) {
@@ -1334,7 +1501,6 @@ function renderJournalTable(items, title, emptyMsg) {
       <td class="fa-td">${escHtml(dataService.costCenterLabel(item.cost_center))}</td>
       <td class="fa-td">${item.category || '—'}</td>
       <td class="fa-td-desc">${(item.description || '').replace(/</g, '&lt;')}</td>
-      <td class="fa-td">${pmDisplay(item)}</td>
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
         ${item.type === 'Revenue' ? '+' : '−'}${dataService.formatLedgerUgx(Number(item.amount))}
       </td>
@@ -1354,7 +1520,7 @@ function renderJournalTable(items, title, emptyMsg) {
         <table class="fa-table">
           <thead>
             <tr>
-              <th>Date</th><th>Type</th><th>Attributed to</th><th>Category</th><th>Description</th><th>Method</th><th class="fa-th-num">Amount</th><th class="fa-th-actions"> </th>
+              <th>Date</th><th>Type</th><th>Attributed to</th><th>Category</th><th>Description</th><th class="fa-th-num">Amount</th><th class="fa-th-actions"> </th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -1390,22 +1556,27 @@ async function renderFinance(container) {
   /** Snapshot for CSV / HTML / print exports after each successful paint. */
   let exportCtx = {
     items: [],
+    exportItems: [],
     from: '',
     to: '',
     activeSub: activeSub,
-    tabLabel: 'Financial Overview',
+    tabLabel: 'Farm Overview',
+    costCenter: null,
+    exportSlug: 'overview',
     summary: [],
   };
 
   const runExportCsv = () => {
     const from = exportCtx.from || overviewRange.from;
     const to = exportCtx.to || overviewRange.to;
-    const rows = ledgerCsvRows(itemsInDateRange(exportCtx.items, from, to));
+    const sourceItems = exportCtx.exportItems || exportCtx.items || [];
+    const rows = ledgerCsvRows(itemsInDateRange(sourceItems, from, to));
     if (!rows.length) {
       showToast('No ledger lines in the selected period to export.');
       return;
     }
-    downloadCSV(`farm_finance_ledger_${from}_${to}.csv`, rows);
+    const slug = exportCtx.exportSlug || 'ledger';
+    downloadCSV(`farm_finance_${slug}_${from}_${to}.csv`, rows);
     showToast(`Exported ${rows.length} ledger line(s) as CSV.`);
   };
 
@@ -1430,8 +1601,12 @@ async function renderFinance(container) {
         title: tabLabel,
         tabLabel,
         periodLabel,
+        summary: exportCtx.summary || [],
       });
-      const slug = String(exportCtx.activeSub || 'report').replace(/[^a-z0-9_-]/gi, '_');
+      const slug = String(exportCtx.exportSlug || exportCtx.activeSub || 'report').replace(
+        /[^a-z0-9_-]/gi,
+        '_'
+      );
       downloadBlob(`farm_finance_${slug}_${exportStamp()}.doc`, blob);
       showToast(`${tabLabel} downloaded as Word (.doc).`);
     } catch (e) {
@@ -1459,6 +1634,7 @@ async function renderFinance(container) {
       title: tabLabel,
       tabLabel,
       periodLabel,
+      summary: exportCtx.summary || [],
     });
     const ok = openHtmlInPrintWindow(html, {
       onBlocked: () => showToast('Pop-up blocked — allow pop-ups to print, or use Download Word.'),
@@ -1626,165 +1802,100 @@ async function renderFinance(container) {
     try {
     const rf = overviewRange.from;
     const rt = overviewRange.to;
-    const revP = sumInRange(items, rf, rt, 'Revenue');
-    const expP = sumInRange(items, rf, rt, 'Expense');
-    const netP = revP - expP;
-    const prevWin = previousPeriodSameLength(rf, rt);
-    const netPrev = totalsInRange(items, prevWin.from, prevWin.to).netProfit;
-    const profitTrend =
-      netPrev !== 0 ? ((netP - netPrev) / Math.abs(netPrev)) * 100 : netP > 0 ? 100 : 0;
-    const ytd = ytdTotals(items);
-    let monthKeys = monthKeysBetweenInclusive(rf, rt, 24);
-    if (monthKeys.length === 0) {
-      const k = monthKey(`${rf}T12:00:00`) || currentYearMonth();
-      monthKeys = [k];
-    }
-    const monthly = aggregateMonthlyForKeys(items, monthKeys);
-    const expensePie = expenseCategoriesInRange(items, rf, rt).slice(0, 8);
-    const rangeHint = formatRangeHint(rf, rt);
-    const chartMonthsNote =
-      monthKeys.length <= 1 ? '1 month in view' : `${monthKeys.length} months in view`;
-    const farmExpP = sumInRangeForCenter(items, rf, rt, 'Expense', 'farm');
-    const houseExpP = sumInRangeForCenter(items, rf, rt, 'Expense', 'ruhunga_farm_house');
-    const farmRevP = sumInRangeForCenter(items, rf, rt, 'Revenue', 'farm');
-    const houseRevP = sumInRangeForCenter(items, rf, rt, 'Revenue', 'ruhunga_farm_house');
-    const farmNetP = farmRevP - farmExpP;
-    const houseNetP = houseRevP - houseExpP;
+    const overviewScope = OVERVIEW_SCOPE[activeSub] || null;
+    const scopedForOverview = overviewScope
+      ? filterByCostCenter(items, overviewScope.costCenter)
+      : items;
 
     const tabMeta = ACCOUNTING_SUBTABS.find((t) => t.id === activeSub);
-    exportCtx = {
-      items,
-      from: rf,
-      to: rt,
-      activeSub,
-      tabLabel: tabMeta?.label || activeSub,
-      summary: [
-        ['Period', formatRangeHint(rf, rt)],
-        ['Revenue (period)', dataService.formatCurrency(revP)],
-        ['Expenses (period)', dataService.formatCurrency(expP)],
-        ['Net profit (period)', dataService.formatCurrency(netP)],
-        ['Estate (farm) net', dataService.formatCurrency(farmNetP)],
-        ['Ruhunga farm house net', dataService.formatCurrency(houseNetP)],
-        ['YTD net profit', dataService.formatCurrency(ytd.netProfit)],
-      ],
-    };
-
-    const overviewKpiHtml = `
-      <div class="fa-kpi-grid">
-        <div class="fa-kpi fa-kpi-green">
-          <div class="fa-kpi-h">Revenue (period)</div>
-          <div class="fa-kpi-v">${fmt(revP)}</div>
-          <div class="fa-kpi-f fa-kpi-f-green"><span class="material-symbols-outlined" style="font-size:14px;">north_east</span> ${rangeHint}</div>
-        </div>
-        <div class="fa-kpi fa-kpi-red">
-          <div class="fa-kpi-h">Expenses (period)</div>
-          <div class="fa-kpi-v">${fmt(expP)}</div>
-          <div class="fa-kpi-f fa-kpi-f-red"><span class="material-symbols-outlined" style="font-size:14px;">south_east</span> Costs in selected range</div>
-        </div>
-        <div class="fa-kpi ${netP >= 0 ? 'fa-kpi-blue' : 'fa-kpi-orange'}">
-          <div class="fa-kpi-h">Net profit (period)</div>
-          <div class="fa-kpi-v ${netP >= 0 ? 'fa-kpi-v-blue' : 'fa-kpi-v-orange'}">${fmt(Math.abs(netP))}<span class="fa-kpi-sub"> ${netP >= 0 ? 'profit' : 'loss'}</span></div>
-          <div class="fa-kpi-f ${profitTrend >= 0 ? 'fa-kpi-f-green' : 'fa-kpi-f-red'}">
-            ${profitTrend >= 0 ? '↗' : '↘'} ${Math.abs(profitTrend).toFixed(1)}% vs prior period (same length)
-          </div>
-        </div>
-        <div class="fa-kpi fa-kpi-amber">
-          <div class="fa-kpi-h">YTD net profit</div>
-          <div class="fa-kpi-v fa-kpi-v-amber">${fmt(Math.abs(ytd.netProfit))}</div>
-          <div class="fa-kpi-f fa-kpi-f-muted">${new Date().getFullYear()} year-to-date</div>
-        </div>
-      </div>
-      <div class="fa-kpi-grid" style="margin-top:0;">
-        <div class="fa-kpi fa-kpi-blue">
-          <div class="fa-kpi-h">Estate (farm) net</div>
-          <div class="fa-kpi-v">${fmt(Math.abs(farmNetP))}<span class="fa-kpi-sub"> ${farmNetP >= 0 ? 'profit' : 'loss'}</span></div>
-          <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(farmRevP)} · Exp ${fmt(farmExpP)}</div>
-        </div>
-        <div class="fa-kpi fa-kpi-amber">
-          <div class="fa-kpi-h">Ruhunga farm house net</div>
-          <div class="fa-kpi-v">${fmt(Math.abs(houseNetP))}<span class="fa-kpi-sub"> ${houseNetP >= 0 ? 'profit' : 'loss'}</span></div>
-          <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(houseRevP)} · Exp ${fmt(houseExpP)}</div>
-        </div>
-      </div>
-      <div class="fa-chart-row">
-        <div class="fa-card fa-chart-wide">
-          <div class="fa-card-head">
-            <div class="fa-card-title">Revenue vs Expenses</div>
-            <div class="fa-card-desc">${chartMonthsNote} — UGX</div>
-          </div>
-          <div class="fa-chart-box"><canvas id="fa-chart-bar"></canvas></div>
-        </div>
-        <div class="fa-card fa-chart-narrow">
-          <div class="fa-card-head">
-            <div class="fa-card-title">Expense breakdown</div>
-            <div class="fa-card-desc">Selected period by category</div>
-          </div>
-          <div class="fa-pie-wrap">
-            ${expensePie.length === 0 ? '<div class="fa-empty-pie">No expense data in this range</div>' : `<div class="fa-chart-box fa-chart-pie"><canvas id="fa-chart-pie"></canvas></div>`}
-            <div class="fa-pie-legend">
-              ${expensePie
-                .slice(0, 5)
-                .map(
-                  (c, i) => `
-                <div class="fa-legend-row">
-                  <span class="fa-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
-                  <span class="fa-legend-name">${c.category}</span>
-                  <span class="fa-legend-val">${fmt(c.amount)}</span>
-                </div>`
-                )
-                .join('')}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="fa-card">
-        <div class="fa-card-head">
-          <div class="fa-card-title">Net profit trend</div>
-          <div class="fa-card-desc">Month-over-month profitability</div>
-        </div>
-        <div class="fa-chart-box fa-chart-area"><canvas id="fa-chart-area"></canvas></div>
-      </div>
-      ${renderJournalTable(
-        [...items]
-          .filter((i) => !Number.isNaN(new Date(i.date).getTime()))
-          .filter((i) => {
-            const ds = rowDateStr(i);
-            return ds >= rf && ds <= rt;
-          })
-          .sort((a, b) => String(b.date).localeCompare(String(a.date)))
-          .slice(0, 80),
-        'Journal entries (selected period)',
-        'No entries in this range — widen the period or use Add entry.'
-      )}
-    `;
-
-    const win = ytdWindow();
+    let overviewPaint = null;
     let bodyHtml = '';
-    if (activeSub === 'overview') {
-      bodyHtml = overviewKpiHtml;
-    } else if (activeSub === 'general') {
-      bodyHtml = renderGeneralReportHtml({
-        items,
-        contracts,
-        blocks,
-        batches,
+
+    if (overviewScope) {
+      overviewPaint = renderFinancialOverviewHtml({
+        scopedItems: scopedForOverview,
         from: rf,
         to: rt,
+        costCenter: overviewScope.costCenter,
+        emptyJournal: overviewScope.emptyJournal,
       });
-    } else if (activeSub === 'income') {
-      bodyHtml = renderComprehensiveIncomeHtml(items, win.year);
-    } else if (activeSub === 'cashflow') {
-      bodyHtml = renderCashflowHtml(items, win.year);
-    } else if (activeSub === 'analysis') {
-      bodyHtml = renderAnalysisHtml(items, blocks, batches, win.year);
-    } else if (activeSub === 'cashbook') {
-      bodyHtml = renderCashBookHtml(items, rf, rt);
+      bodyHtml = overviewPaint.html;
+      const { revP, expP, netP, ytd, centerLabel } = overviewPaint.summaryMetrics;
+      exportCtx = {
+        items: scopedForOverview,
+        exportItems: scopedForOverview,
+        from: rf,
+        to: rt,
+        activeSub,
+        tabLabel: tabMeta?.label || activeSub,
+        costCenter: overviewScope.costCenter,
+        exportSlug: overviewScope.exportSlug,
+        summary: [
+          ['Scope', centerLabel],
+          ['Period', formatRangeHint(rf, rt)],
+          ['Revenue (period)', dataService.formatCurrency(revP)],
+          ['Expenses (period)', dataService.formatCurrency(expP)],
+          ['Net result (period)', dataService.formatCurrency(netP)],
+          ['YTD net result', dataService.formatCurrency(ytd.netProfit)],
+        ],
+      };
+    } else {
+      const farmExpP = sumInRangeForCenter(items, rf, rt, 'Expense', 'farm');
+      const houseExpP = sumInRangeForCenter(items, rf, rt, 'Expense', 'ruhunga_farm_house');
+      const farmRevP = sumInRangeForCenter(items, rf, rt, 'Revenue', 'farm');
+      const houseRevP = sumInRangeForCenter(items, rf, rt, 'Revenue', 'ruhunga_farm_house');
+      const farmNetP = farmRevP - farmExpP;
+      const houseNetP = houseRevP - houseExpP;
+      const revP = sumInRange(items, rf, rt, 'Revenue');
+      const expP = sumInRange(items, rf, rt, 'Expense');
+      const netP = revP - expP;
+      const ytd = ytdTotals(items);
+      exportCtx = {
+        items,
+        exportItems: items,
+        from: rf,
+        to: rt,
+        activeSub,
+        tabLabel: tabMeta?.label || activeSub,
+        costCenter: null,
+        exportSlug: String(activeSub || 'report').replace(/[^a-z0-9_-]/gi, '_'),
+        summary: [
+          ['Period', formatRangeHint(rf, rt)],
+          ['Revenue (period)', dataService.formatCurrency(revP)],
+          ['Expenses (period)', dataService.formatCurrency(expP)],
+          ['Net profit (period)', dataService.formatCurrency(netP)],
+          ['Estate (farm) net', dataService.formatCurrency(farmNetP)],
+          ['Ruhunga farm house net', dataService.formatCurrency(houseNetP)],
+          ['YTD net profit', dataService.formatCurrency(ytd.netProfit)],
+        ],
+      };
+
+      const win = ytdWindow();
+      if (activeSub === 'general') {
+        bodyHtml = renderGeneralReportHtml({
+          items,
+          contracts,
+          blocks,
+          batches,
+          from: rf,
+          to: rt,
+        });
+      } else if (activeSub === 'income') {
+        bodyHtml = renderComprehensiveIncomeHtml(items, win.year);
+      } else if (activeSub === 'cashflow') {
+        bodyHtml = renderCashflowHtml(items, win.year);
+      } else if (activeSub === 'analysis') {
+        bodyHtml = renderAnalysisHtml(items, blocks, batches, win.year);
+      } else if (activeSub === 'cashbook') {
+        bodyHtml = renderCashBookHtml(items, rf, rt);
+      }
     }
 
     if (seq !== paintSeq) return;
 
     const showPeriodBar =
       activeSub === 'overview' ||
+      activeSub === 'overview-ruhunga' ||
       activeSub === 'general' ||
       activeSub === 'cashbook';
     const rangeBarHtml = showPeriodBar
@@ -1846,9 +1957,9 @@ async function renderFinance(container) {
     `;
 
     const panel = shell.querySelector('#fa-panel');
-    if (activeSub === 'overview' && panel) {
+    if (overviewScope && overviewPaint && panel) {
       destroyChartsIn(panel);
-      await bindOverviewCharts(panel, monthly, expensePie);
+      await bindOverviewCharts(panel, overviewPaint.monthly, overviewPaint.expensePie.slice(0, 8));
     }
     if (seq !== paintSeq) return;
     } catch (e) {

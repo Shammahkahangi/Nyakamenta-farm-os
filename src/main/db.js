@@ -899,6 +899,27 @@ function initDB(appPath) {
             loan_id INTEGER,
             FOREIGN KEY (payroll_run_id) REFERENCES payroll_runs(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS requisitions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            req_no TEXT,
+            date TEXT,
+            title TEXT,
+            notes TEXT,
+            total_amount REAL DEFAULT 0,
+            status TEXT DEFAULT 'Draft',
+            created_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS requisition_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            requisition_id INTEGER NOT NULL,
+            item TEXT NOT NULL,
+            qty TEXT,
+            unit_cost REAL DEFAULT 0,
+            amount REAL DEFAULT 0,
+            FOREIGN KEY (requisition_id) REFERENCES requisitions(id) ON DELETE CASCADE
+        );
     `);
 
     // Idempotent upgrades for existing DB files.

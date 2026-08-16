@@ -1800,6 +1800,61 @@ const dataService = {
         return await getEstateApi().execute('DELETE FROM payroll_lines WHERE id = ?', [id]);
     },
 
+    // ── Requisitions ─────────────────────────────────────────
+    async getRequisitions() {
+        const reqs = await getEstateApi().query('SELECT * FROM requisitions ORDER BY date DESC, id DESC');
+        for (const req of reqs) {
+            req.items = await getEstateApi().query('SELECT * FROM requisition_items WHERE requisition_id = ? ORDER BY id ASC', [req.id]);
+        }
+        return reqs;
+    },
+
+    async getRequisition(id) {
+        const rows = await getEstateApi().query('SELECT * FROM requisitions WHERE id = ?', [id]);
+        if (!rows.length) return null;
+        const req = rows[0];
+        req.items = await getEstateApi().query('SELECT * FROM requisition_items WHERE requisition_id = ? ORDER BY id ASC', [id]);
+        return req;
+    },
+
+    async saveRequisition({ id, req_no, date, title, notes, items, total_amount }) {
+        const d = date || new Date().toISOString().slice(0, 10);
+        const t = title || 'Farm Requisition';
+        const tot = Number(total_amount) || 0;
+        const now = new Date().toISOString();
+
+        let reqId = id;
+        if (reqId) {
+            await getEstateApi().execute(
+                'UPDATE requisitions SET req_no = ?, date = ?, title = ?, notes = ?, total_amount = ? WHERE id = ?',
+                [req_no || `REQ-${reqId}`, d, t, notes || '', tot, reqId]
+            );
+            await getEstateApi().execute('DELETE FROM requisition_items WHERE requisition_id = ?', [reqId]);
+        } else {
+            const res = await getEstateApi().execute(
+                'INSERT INTO requisitions (req_no, date, title, notes, total_amount, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [req_no || `REQ-${Date.now().toString().slice(-6)}`, d, t, notes || '', tot, 'Draft', now]
+            );
+            reqId = res.insertId || res.lastInsertRowid;
+        }
+
+        if (Array.isArray(items)) {
+            for (const item of items) {
+                if (!item.item || !String(item.item).trim()) continue;
+                await getEstateApi().execute(
+                    'INSERT INTO requisition_items (requisition_id, item, qty, unit_cost, amount) VALUES (?, ?, ?, ?, ?)',
+                    [reqId, String(item.item).trim(), String(item.qty || '').trim(), Number(item.unit_cost) || 0, Number(item.amount) || 0]
+                );
+            }
+        }
+        return reqId;
+    },
+
+    async deleteRequisition(id) {
+        await getEstateApi().execute('DELETE FROM requisition_items WHERE requisition_id = ?', [id]);
+        return await getEstateApi().execute('DELETE FROM requisitions WHERE id = ?', [id]);
+    },
+
     /** Last calendar day of year_month (YYYY-MM) for SACCO transaction dates. */
     payrollMonthEndDate(yearMonth) {
         const [y, m] = String(yearMonth).split('-').map(Number);

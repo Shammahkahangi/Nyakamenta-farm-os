@@ -105,20 +105,10 @@ function htmlTableFromEl(tableEl) {
 function htmlFromKpiGrid(gridEl) {
   const kpis = [...gridEl.querySelectorAll('.fa-kpi')];
   if (!kpis.length) return '';
-  const cells = kpis
-    .map((kpi) => {
-      const h = escHtml(textOf(kpi.querySelector('.fa-kpi-h')));
-      const v = escHtml(textOf(kpi.querySelector('.fa-kpi-v')));
-      const f = escHtml(textOf(kpi.querySelector('.fa-kpi-f')));
-      const vCls = amountClass(kpi.querySelector('.fa-kpi-v'));
-      const fCls = amountClass(kpi.querySelector('.fa-kpi-f'));
-      return `<td>
-        <p class="kpi-h">${h}</p>
-        <p class="kpi-v ${vCls}">${v}</p>
-        <p class="kpi-f ${fCls}">${f}</p>
-      </td>`;
-    })
-    .join('');
+  const sectionTitle =
+    gridEl.getAttribute('data-export-title') ||
+    gridEl.dataset?.exportTitle ||
+    'Summary';
   // Pair into rows of 2
   const pairs = [];
   for (let i = 0; i < kpis.length; i += 2) {
@@ -140,8 +130,7 @@ function htmlFromKpiGrid(gridEl) {
     const pad = slice.length === 1 ? '<td></td>' : '';
     pairs.push(`<tr>${rowCells}${pad}</tr>`);
   }
-  void cells;
-  return `<h2>Summary</h2><table class="kpi-table">${pairs.join('')}</table>`;
+  return `<h2>${escHtml(sectionTitle)}</h2><table class="kpi-table">${pairs.join('')}</table>`;
 }
 
 function htmlFromCard(cardEl) {
@@ -199,11 +188,22 @@ function htmlBodyFromPanel(panel) {
   return parts.join('\n') || '<p class="blurb">No report content to export.</p>';
 }
 
+function htmlSummaryMetrics(summary) {
+  if (!Array.isArray(summary) || !summary.length) return '';
+  const rows = summary
+    .map(
+      ([label, value]) =>
+        `<tr><td>${escHtml(label)}</td><td class="num">${escHtml(value)}</td></tr>`
+    )
+    .join('');
+  return `<h2>Key metrics</h2><table><thead><tr><th>Metric</th><th class="num">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 /**
  * Build a Word-compatible .doc Blob (HTML Word format).
  * Opens in Microsoft Word / LibreOffice with organised sections & tables.
  */
-export async function buildFarmFinanceDocx(panel, { title, tabLabel, periodLabel }) {
+export async function buildFarmFinanceDocx(panel, { title, tabLabel, periodLabel, summary }) {
   const generated = new Date().toLocaleString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -240,6 +240,7 @@ export async function buildFarmFinanceDocx(panel, { title, tabLabel, periodLabel
   <p class="meta"><strong>${escHtml(tabLabel || 'Report')}</strong>${
     periodLabel ? ` · ${escHtml(periodLabel)}` : ''
   } · Generated ${escHtml(generated)}</p>
+  ${htmlSummaryMetrics(summary)}
   ${htmlBodyFromPanel(panel)}
   <p class="footer">Farm finance · amounts in UGX · Estate (farm) and Ruhunga farm house tagged where shown.</p>
 </body>
@@ -252,7 +253,7 @@ export async function buildFarmFinanceDocx(panel, { title, tabLabel, periodLabel
 }
 
 /** Light HTML used for Print → Save as PDF. */
-export function buildVisualReportExportHtml(panel, { title, tabLabel, periodLabel }) {
+export function buildVisualReportExportHtml(panel, { title, tabLabel, periodLabel, summary }) {
   const generated = new Date().toLocaleString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -286,6 +287,7 @@ export function buildVisualReportExportHtml(panel, { title, tabLabel, periodLabe
   <p class="meta"><strong>${escHtml(tabLabel || 'Report')}</strong>${
     periodLabel ? ` · ${escHtml(periodLabel)}` : ''
   } · Generated ${escHtml(generated)}</p>
+  ${htmlSummaryMetrics(summary)}
   ${clone.innerHTML || '<p>No content</p>'}
   </body></html>`;
 }

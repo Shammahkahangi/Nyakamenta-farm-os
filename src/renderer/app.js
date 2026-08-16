@@ -17,6 +17,7 @@ import { renderLodgeReports, renderSaccoReports } from './features/core/moduleRe
 import { renderSaccoHub } from './features/sacco/saccoHub.js';
 import { renderManagerOverview } from './features/core/managerOverview.js';
 import { renderLogbook } from './features/hr/logbook.js';
+import { renderRequisitions } from './features/ops/requisitions.js';
 import { ensureWebSession, isWebMode, signOutWeb } from './auth/webAuth.js';
 import {
   getEstateRole,
@@ -41,6 +42,7 @@ const FARM_NAV_OWNER = [
   { id: 'harvest-processing', label: 'Harvest & Processing', icon: 'grain', render: renderHarvestProcessing },
   { id: 'nursery', label: 'Nursery', icon: 'potted_plant', render: renderNursery },
   { id: 'inventory', label: 'Inventory', icon: 'inventory_2', render: renderInventory },
+  { id: 'requisitions', label: 'Requisitions', icon: 'receipt_long', render: renderRequisitions },
   { id: 'logbook', label: 'Logbook', icon: 'assignment', render: renderLogbook },
   { id: 'sales-finance', label: 'Farm Finance', icon: 'payments', render: renderSalesFinance },
   { id: 'aiinsights', label: 'AI Insights', icon: 'auto_awesome', render: renderAIInsights },
@@ -62,6 +64,7 @@ const FARM_NAV_MANAGER = [
   { id: 'harvest-processing', label: 'Harvest & Processing', icon: 'grain', render: renderHarvestProcessing },
   { id: 'nursery', label: 'Nursery', icon: 'potted_plant', render: renderNursery },
   { id: 'inventory', label: 'Inventory', icon: 'inventory_2', render: renderInventory },
+  { id: 'requisitions', label: 'Requisitions', icon: 'receipt_long', render: renderRequisitions },
   { id: 'logbook', label: 'Logbook', icon: 'assignment', render: renderLogbook },
 ];
 
@@ -640,7 +643,18 @@ async function renderPage() {
   }
 
   workspace.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Loading...</div>';
-  await page.render(workspace);
+  try {
+    await page.render(workspace);
+  } catch (err) {
+    console.error(`Error rendering page ${currentPage}:`, err);
+    workspace.innerHTML = `
+      <div style="padding:40px; color:var(--red-text); margin:20px; border:1px solid var(--border-subtle); border-radius:8px; background:var(--bg-surface);">
+        <h2 style="font-size:20px; font-weight:600; margin-bottom:8px;">Error Loading ${escHtml(page.label || currentPage)}</h2>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">${escHtml(err.message || String(err))}</p>
+        <pre style="background:rgba(0,0,0,0.3); padding:12px; border-radius:6px; font-size:11px; overflow-x:auto;">${escHtml(err.stack || '')}</pre>
+      </div>
+    `;
+  }
 }
 
 function initFooter() {
@@ -727,17 +741,22 @@ async function init() {
     });
   }
 
-  let lastDoor = localStorage.getItem('estate_last_door');
-  if (lastDoor === 'farm-sacco') {
-    lastDoor = DOORS.FARM;
-    localStorage.setItem('estate_last_door', DOORS.FARM);
-  }
-  const allowed = getAllowedDoors();
-  if (allowed.length === 1) {
-    await enterDoor(allowed[0]);
-  } else if (lastDoor && allowed.includes(lastDoor)) {
-    await enterDoor(lastDoor);
-  } else {
+  try {
+    let lastDoor = localStorage.getItem('estate_last_door');
+    if (lastDoor === 'farm-sacco') {
+      lastDoor = DOORS.FARM;
+      localStorage.setItem('estate_last_door', DOORS.FARM);
+    }
+    const allowed = getAllowedDoors();
+    if (allowed.length === 1) {
+      await enterDoor(allowed[0]);
+    } else if (lastDoor && allowed.includes(lastDoor)) {
+      await enterDoor(lastDoor);
+    } else {
+      renderDoorSelector();
+    }
+  } catch (err) {
+    console.error("Failed entering initial door:", err);
     renderDoorSelector();
   }
 }
@@ -748,4 +767,8 @@ document.addEventListener('estate-navigate', (ev) => {
   navigate(id);
 });
 
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
