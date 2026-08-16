@@ -474,16 +474,20 @@ async function loadHistoryList(container) {
       }
 
       listEl.innerHTML = filtered.map(req => `
-        <div style="background: var(--bg-surface, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px; transition: all 0.15s ease;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+        <div class="req-card-item" data-id="${req.id}" style="background: var(--bg-surface, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px; transition: all 0.15s ease;">
+          <div class="req-card-clickable" data-id="${req.id}" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; cursor: pointer;">
             <div>
-              <strong style="color: var(--text-primary, #0f172a); font-size: 13.5px; display: block; margin-bottom: 2px;">${esc(req.title || 'Requisition')}</strong>
+              <strong style="color: var(--text-primary, #0f172a); font-size: 13.5px; display: block; margin-bottom: 2px; text-decoration: underline transparent; transition: text-decoration 0.15s;">${esc(req.title || 'Requisition')}</strong>
               <div style="font-size: 11px; color: var(--text-muted, #64748b);">${req.date} · ${req.items ? req.items.length : 0} items</div>
             </div>
             <span style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 13px;">${dataService.formatCurrency(req.total_amount)}</span>
           </div>
 
           <div style="display: flex; gap: 6px; margin-top: 12px; border-top: 1px dashed var(--border-color, #e2e8f0); padding-top: 10px;">
+            <button type="button" class="btn-view-req" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #0284c7; background: #f0f9ff; color: #0284c7; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 15px;">visibility</span> View
+            </button>
+
             <button type="button" class="btn-load-req" data-id="${req.id}" style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-primary, #1e293b); cursor: pointer; display: flex; align-items: center; gap: 4px;">
               <span class="material-symbols-outlined" style="font-size: 15px;">edit</span> Edit
             </button>
@@ -500,8 +504,18 @@ async function loadHistoryList(container) {
       `).join('');
 
       // Attach listeners
+      listEl.querySelectorAll('.req-card-clickable, .btn-view-req').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = Number(el.dataset.id);
+          const req = requisitions.find(r => r.id === id);
+          if (req) showRequisitionModal(req);
+        });
+      });
+
       listEl.querySelectorAll('.btn-load-req').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
           const id = Number(btn.dataset.id);
           const req = requisitions.find(r => r.id === id);
           if (req) loadRequisitionIntoEditor(req);
@@ -509,7 +523,8 @@ async function loadHistoryList(container) {
       });
 
       listEl.querySelectorAll('.btn-dl-excel').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
           const id = Number(btn.dataset.id);
           const req = requisitions.find(r => r.id === id);
           if (req) exportRequisitionToExcel(req);
@@ -517,7 +532,8 @@ async function loadHistoryList(container) {
       });
 
       listEl.querySelectorAll('.btn-del-req').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
           const id = Number(btn.dataset.id);
           if (confirm('Delete this requisition?')) {
             await dataService.deleteRequisition(id);
@@ -540,6 +556,107 @@ async function loadHistoryList(container) {
     console.error("History load error:", err);
     listEl.innerHTML = `<div style="color:red; font-size:12px; padding:10px;">Failed to load history: ${err.message}</div>`;
   }
+}
+
+function showRequisitionModal(req) {
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = `
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px); z-index: 9999; display: flex; align-items: center;
+    justify-content: center; padding: 16px; animation: fadeIn 0.15s ease-out;
+  `;
+
+  const itemRowsHtml = (req.items || []).map((it, idx) => `
+    <tr style="border-bottom: 1px solid var(--border-color, #e2e8f0); font-size: 13px;">
+      <td style="padding: 10px 12px; color: var(--text-muted, #64748b); text-align: center; width: 40px;">${idx + 1}</td>
+      <td style="padding: 10px 12px; font-weight: 600; color: var(--text-primary, #0f172a);">${esc(it.item || '—')}</td>
+      <td style="padding: 10px 12px; color: var(--text-secondary, #475569); text-align: center; width: 90px;">${esc(it.qty || '1')}</td>
+      <td style="padding: 10px 12px; color: var(--text-secondary, #475569); text-align: right; width: 130px; font-family: monospace;">${it.unit_cost ? dataService.formatCurrency(it.unit_cost) : '—'}</td>
+      <td style="padding: 10px 12px; font-weight: 700; color: #15803d; text-align: right; width: 140px; font-family: monospace;">${dataService.formatCurrency(it.amount)}</td>
+    </tr>
+  `).join('');
+
+  backdrop.innerHTML = `
+    <div style="background: var(--bg-card, #ffffff); border-radius: 16px; max-width: 680px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden; border: 1px solid var(--border-color, #cbd5e1);">
+      
+      <!-- Modal Header -->
+      <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: flex-start; background: var(--bg-surface, #f8fafc);">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+            <span style="font-size: 11px; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${esc(req.status || 'Approved & Disbursed')}</span>
+            <span style="font-size: 12px; color: var(--text-muted, #64748b); font-weight: 500;">📅 ${esc(req.date)}</span>
+          </div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary, #0f172a);">${esc(req.title || 'Requisition Details')}</h3>
+          <div style="font-size: 11px; color: var(--text-muted, #64748b); margin-top: 2px;">Req No: ${esc(req.req_no || `REQ-${req.id}`)}</div>
+        </div>
+        <button class="modal-close-btn" style="background: none; border: none; font-size: 24px; color: var(--text-muted, #94a3b8); cursor: pointer; padding: 4px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable Table) -->
+      <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; overflow: hidden;">
+          <thead>
+            <tr style="background: var(--bg-surface, #f1f5f9); font-size: 11px; text-transform: uppercase; color: var(--text-muted, #475569); letter-spacing: 0.5px;">
+              <th style="padding: 10px 12px; text-align: center;">#</th>
+              <th style="padding: 10px 12px; text-align: left;">Item</th>
+              <th style="padding: 10px 12px; text-align: center;">Qty</th>
+              <th style="padding: 10px 12px; text-align: right;">Unit Cost</th>
+              <th style="padding: 10px 12px; text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRowsHtml || '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No items in this requisition</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="padding: 16px 24px; border-top: 1px solid var(--border-color, #e2e8f0); background: var(--bg-surface, #f8fafc); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-size: 12px; color: var(--text-muted, #64748b);">Total Requisition Amount:</span>
+          <strong style="font-size: 18px; color: #15803d; font-family: monospace; display: block;">${dataService.formatCurrency(req.total_amount)}</strong>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-modal-excel" style="padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; border: 1px solid #16a34a; background: #f0fdf4; color: #15803d; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">file_download</span> Download Excel
+          </button>
+          <button class="btn-modal-edit" style="padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-card, #fff); color: var(--text-primary, #1e293b); cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">edit</span> Edit in Form
+          </button>
+          <button class="btn-modal-close" style="padding: 8px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-color, #cbd5e1); background: var(--bg-surface, #e2e8f0); color: var(--text-primary, #334155); cursor: pointer;">
+            Close
+          </button>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const close = () => {
+    if (document.body.contains(backdrop)) {
+      document.body.removeChild(backdrop);
+    }
+  };
+
+  backdrop.querySelector('.modal-close-btn').addEventListener('click', close);
+  backdrop.querySelector('.btn-modal-close').addEventListener('click', close);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) close();
+  });
+
+  backdrop.querySelector('.btn-modal-excel').addEventListener('click', () => {
+    exportRequisitionToExcel(req);
+  });
+
+  backdrop.querySelector('.btn-modal-edit').addEventListener('click', () => {
+    loadRequisitionIntoEditor(req);
+    close();
+  });
 }
 
 function loadRequisitionIntoEditor(req) {
