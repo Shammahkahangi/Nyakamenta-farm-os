@@ -1408,7 +1408,7 @@ function bindSaccoOverviewActions(container, members, loans, refresh) {
   <title>SACCO Performance & Loan Book Report</title>
   <style>
     @page { size: A4 landscape; margin: 1.2cm; }
-    body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; color: #0f172a; margin: 0; }
+    body { font-family: "Book Antiqua", Georgia, serif; font-size: 10pt; color: #0f172a; margin: 0; }
     h1 { font-size: 16pt; color: #0f172a; margin: 0 0 4pt; }
     h2 { font-size: 12pt; color: #1e293b; margin: 12pt 0 6pt; border-bottom: 1pt solid #cbd5e1; padding-bottom: 3pt; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; table-layout: fixed; }
@@ -1433,7 +1433,21 @@ function bindSaccoOverviewActions(container, members, loans, refresh) {
     </tbody>
   </table>
 
-  <h2>2. Registered Members (${mList.length})</h2>
+  <h2>2. SACCO Loan Accounts & Status (${lList.length} Loans)</h2>
+  <table>
+    <thead><tr><th>Loan ID</th><th>Member Name</th><th class="num">Principal Issued</th><th class="num">Repaid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+    <tbody>
+      ${lList.map(l => {
+        const mem = mList.find(m => m.id === l.member_id);
+        const reps = rList.filter(r => r.loan_id === l.id).reduce((s, r) => s + Number(r.amount || 0), 0);
+        const bal = Math.max(Number(l.amount || 0) - reps, 0);
+        const st = bal <= 0 ? 'Paid' : (l.status || 'Active');
+        return `<tr><td>#${l.id}</td><td>${mem ? mem.full_name : 'Member'}</td><td class="num">${dataService.formatCurrency(l.amount)}</td><td class="num">${dataService.formatCurrency(reps)}</td><td class="num">${dataService.formatCurrency(bal)}</td><td><strong>${st}</strong></td></tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <h2>3. Registered Members (${mList.length})</h2>
   <table>
     <thead><tr><th>Member No</th><th>Full Name</th><th>Phone</th><th>Status</th></tr></thead>
     <tbody>

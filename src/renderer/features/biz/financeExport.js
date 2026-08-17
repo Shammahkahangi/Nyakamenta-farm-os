@@ -49,7 +49,7 @@ function wordDocCss() {
       @page { size: A4 landscape; margin: 10mm; }
       body { margin: 0; }
     }
-    body { font-family: Calibri, Arial, sans-serif; color: #0f172a; font-size: 10pt; line-height: 1.35; width: 100%; margin: 0; }
+    body { font-family: "Book Antiqua", Georgia, serif; color: #0f172a; font-size: 10pt; line-height: 1.35; width: 100%; margin: 0; }
     h1 { font-size: 16pt; margin: 0 0 6pt; color: #0f172a; }
     h2 { font-size: 12pt; margin: 14pt 0 4pt; color: #0f172a; border-bottom: 1pt solid #cbd5e1; padding-bottom: 3pt; }
     .meta { font-size: 9.5pt; color: #64748b; margin-bottom: 12pt; }
