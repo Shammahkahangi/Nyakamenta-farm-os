@@ -850,38 +850,38 @@ function renderFinancialOverviewHtml({
     ${reportBlurb(blurb)}
     <div class="fa-kpi-grid" data-export-title="${escHtml(centerLabel)} summary">
       <div class="fa-kpi fa-kpi-green">
-        <div class="fa-kpi-h">Revenue (period)</div>
+        <div class="fa-kpi-h">Total Income</div>
         <div class="fa-kpi-v">${fmt(revP)}</div>
-        <div class="fa-kpi-f fa-kpi-f-green"><span class="material-symbols-outlined" style="font-size:14px;">north_east</span> ${revLines} lines · ${rangeHint}</div>
+        <div class="fa-kpi-f fa-kpi-f-green">${revLines} income transactions</div>
       </div>
       <div class="fa-kpi fa-kpi-red">
-        <div class="fa-kpi-h">Expenses (period)</div>
+        <div class="fa-kpi-h">Total Expenses</div>
         <div class="fa-kpi-v">${fmt(expP)}</div>
-        <div class="fa-kpi-f fa-kpi-f-red"><span class="material-symbols-outlined" style="font-size:14px;">south_east</span> ${expLines} lines · ${escHtml(centerLabel)}</div>
+        <div class="fa-kpi-f fa-kpi-f-red">${expLines} expense transactions</div>
       </div>
       <div class="fa-kpi ${netP >= 0 ? 'fa-kpi-blue' : 'fa-kpi-orange'}">
-        <div class="fa-kpi-h">Net result (period)</div>
+        <div class="fa-kpi-h">Net Income</div>
         <div class="fa-kpi-v ${netP >= 0 ? 'fa-kpi-v-blue' : 'fa-kpi-v-orange'}">${fmt(Math.abs(netP))}<span class="fa-kpi-sub"> ${netP >= 0 ? 'profit' : 'loss'}</span></div>
         <div class="fa-kpi-f ${profitTrend >= 0 ? 'fa-kpi-f-green' : 'fa-kpi-f-red'}">
-          ${profitTrend >= 0 ? '↗' : '↘'} ${Math.abs(profitTrend).toFixed(1)}% vs prior period (same length)
+          ${profitTrend >= 0 ? 'Up' : 'Down'} ${Math.abs(profitTrend).toFixed(1)}% vs previous period
         </div>
       </div>
       <div class="fa-kpi fa-kpi-amber">
-        <div class="fa-kpi-h">YTD net result</div>
+        <div class="fa-kpi-h">Year-to-Date Net (2026)</div>
         <div class="fa-kpi-v fa-kpi-v-amber">${fmt(Math.abs(ytd.netProfit))}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">${escHtml(centerLabel)} · ${new Date().getFullYear()} year-to-date</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${escHtml(centerLabel)} · ${new Date().getFullYear()} total</div>
       </div>
     </div>
     <div class="fa-kpi-grid" data-export-title="${escHtml(centerLabel)} detail" style="margin-top:0;">
       <div class="fa-kpi fa-kpi-blue">
-        <div class="fa-kpi-h">${escHtml(centerLabel)} net</div>
+        <div class="fa-kpi-h">Net Summary</div>
         <div class="fa-kpi-v">${fmt(Math.abs(netP))}<span class="fa-kpi-sub"> ${netP >= 0 ? 'profit' : 'loss'}</span></div>
-        <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(revP)} · Exp ${fmt(expP)}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Income ${fmt(revP)} · Expenses ${fmt(expP)}</div>
       </div>
       <div class="fa-kpi fa-kpi-red">
-        <div class="fa-kpi-h">Expense lines</div>
+        <div class="fa-kpi-h">Expenses Count</div>
         <div class="fa-kpi-v">${expLines}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">${expensePie.length} categor${expensePie.length === 1 ? 'y' : 'ies'} in period</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${expensePie.length} active categor${expensePie.length === 1 ? 'y' : 'ies'}</div>
       </div>
     </div>
     <div class="fa-chart-row">

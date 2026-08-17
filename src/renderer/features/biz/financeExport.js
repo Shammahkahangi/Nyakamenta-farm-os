@@ -39,31 +39,38 @@ function amountClass(el) {
   return '';
 }
 
-/** Word-friendly stylesheet (opens cleanly in Microsoft Word). */
+/** Word-friendly stylesheet (opens cleanly in Microsoft Word & WPS in landscape). */
 function wordDocCss() {
   return `
-    body { font-family: Calibri, Arial, sans-serif; color: #0f172a; font-size: 11pt; line-height: 1.4; }
-    h1 { font-size: 18pt; margin: 0 0 6pt; color: #0f172a; }
-    h2 { font-size: 13pt; margin: 16pt 0 4pt; color: #0f172a; border-bottom: 1pt solid #cbd5e1; padding-bottom: 3pt; }
-    .meta { font-size: 10pt; color: #64748b; margin-bottom: 14pt; }
-    .blurb { font-size: 10pt; color: #64748b; margin: 0 0 10pt; }
-    .desc { font-size: 9pt; color: #64748b; margin: 0 0 8pt; }
-    table { border-collapse: collapse; width: 100%; margin: 0 0 12pt; }
+    @page { size: A4 landscape; margin: 1.2cm; }
+    @page Section1 { size: 11.0in 8.5in; mso-page-orientation: landscape; margin: 0.5in 0.5in 0.5in 0.5in; }
+    div.Section1 { page: Section1; }
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+      body { margin: 0; }
+    }
+    body { font-family: Calibri, Arial, sans-serif; color: #0f172a; font-size: 10pt; line-height: 1.35; width: 100%; margin: 0; }
+    h1 { font-size: 16pt; margin: 0 0 6pt; color: #0f172a; }
+    h2 { font-size: 12pt; margin: 14pt 0 4pt; color: #0f172a; border-bottom: 1pt solid #cbd5e1; padding-bottom: 3pt; }
+    .meta { font-size: 9.5pt; color: #64748b; margin-bottom: 12pt; }
+    .blurb { font-size: 9.5pt; color: #64748b; margin: 0 0 10pt; }
+    .desc { font-size: 8.5pt; color: #64748b; margin: 0 0 8pt; }
+    table { border-collapse: collapse; width: 100%; max-width: 100%; margin: 0 0 12pt; table-layout: fixed; word-wrap: break-word; overflow-wrap: break-word; }
     th {
       text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em;
       color: #64748b; background: #f1f5f9; border-bottom: 1.5pt solid #cbd5e1;
-      padding: 6pt 8pt;
+      padding: 5pt 6pt; word-break: break-word;
     }
-    td { border-bottom: 0.75pt solid #e2e8f0; padding: 6pt 8pt; vertical-align: top; font-size: 10pt; }
+    td { border-bottom: 0.75pt solid #e2e8f0; padding: 5pt 6pt; vertical-align: top; font-size: 9pt; word-break: break-word; overflow-wrap: break-word; }
     th.num, td.num { text-align: right; white-space: nowrap; }
     tr.total td { font-weight: bold; border-top: 1pt solid #94a3b8; }
     .rev { color: #047857; font-weight: 600; }
     .exp { color: #b91c1c; font-weight: 600; }
     .kpi-table td { border: 1pt solid #e2e8f0; background: #f8fafc; width: 50%; vertical-align: top; }
     .kpi-h { font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 700; margin: 0 0 3pt; }
-    .kpi-v { font-size: 14pt; font-weight: 800; margin: 0 0 2pt; }
-    .kpi-f { font-size: 9pt; color: #64748b; margin: 0; }
-    .footer { font-size: 9pt; color: #94a3b8; margin-top: 18pt; border-top: 0.75pt solid #e2e8f0; padding-top: 8pt; }
+    .kpi-v { font-size: 13pt; font-weight: 800; margin: 0 0 2pt; }
+    .kpi-f { font-size: 8.5pt; color: #64748b; margin: 0; }
+    .footer { font-size: 8.5pt; color: #94a3b8; margin-top: 16pt; border-top: 0.75pt solid #e2e8f0; padding-top: 6pt; }
   `;
 }
 

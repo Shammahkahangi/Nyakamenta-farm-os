@@ -1015,6 +1015,14 @@ function saccoQuickActionsCardHtml() {
           <span class="material-symbols-outlined" style="font-size:20px;">payments</span>
           Add repayment
         </button>
+        <button type="button" class="btn btn-ghost" id="sacco-btn-export-excel" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-subtle);">
+          <span class="material-symbols-outlined" style="font-size:20px;">table</span>
+          Export Excel Report
+        </button>
+        <button type="button" class="btn btn-ghost" id="sacco-btn-export-word" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-subtle);">
+          <span class="material-symbols-outlined" style="font-size:20px;">description</span>
+          Download Word Report
+        </button>
         <button type="button" class="btn btn-ghost" id="sacco-btn-import-payroll" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-subtle);">
           <span class="material-symbols-outlined" style="font-size:20px;">upload_file</span>
           Import payroll (Excel)
@@ -1336,6 +1344,116 @@ function bindSaccoOverviewActions(container, members, loans, refresh) {
       });
       await afterSave();
     });
+  });
+
+  container.querySelector('#sacco-btn-export-excel')?.addEventListener('click', async () => {
+    showToast('Generating SACCO Excel Report…');
+    try {
+      const XLSX = await import('../../../../node_modules/xlsx/xlsx.mjs');
+      const [mList, sList, lList, rList] = await Promise.all([
+        dataService.getSaccoMembers(),
+        dataService.getSaccoSavings(),
+        dataService.getSaccoLoans(),
+        dataService.getSaccoRepayments(),
+      ]);
+
+      const wb = XLSX.utils.book_new();
+      const totSav = sList.reduce((s, r) => s + Number(r.amount || 0), 0);
+      const totLoans = lList.reduce((s, r) => s + Number(r.amount || 0), 0);
+      const totRep = rList.reduce((s, r) => s + Number(r.amount || 0), 0);
+
+      const execRows = [
+        { Metric: 'Total SACCO Members', Value: mList.length },
+        { Metric: 'Total Accumulated Savings', Value: `UGX ${totSav.toLocaleString()}` },
+        { Metric: 'Total Active Loan Principal', Value: `UGX ${totLoans.toLocaleString()}` },
+        { Metric: 'Total Loan Repayments Collected', Value: `UGX ${totRep.toLocaleString()}` },
+        { Metric: 'Outstanding Loan Balance', Value: `UGX ${Math.max(totLoans - totRep, 0).toLocaleString()}` },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(execRows), 'Summary');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mList.map(m => ({ 'Member No': m.member_no, 'Full Name': m.full_name, 'Phone': m.phone || '', 'Status': m.status }))), 'Members');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sList.map(s => ({ 'Date': s.deposit_date, 'Member ID': s.member_id, 'Amount (UGX)': s.amount, 'Notes': s.notes || '' }))), 'Savings');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lList.map(l => ({ 'Loan ID': l.id, 'Member ID': l.member_id, 'Principal (UGX)': l.amount, 'Interest Rate': `${l.interest_rate}%`, 'Date': l.issue_date, 'Status': l.status }))), 'Loans');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rList.map(r => ({ 'Date': r.repayment_date, 'Loan ID': r.loan_id, 'Amount (UGX)': r.amount, 'Notes': r.notes || '' }))), 'Repayments');
+
+      const fileName = `SACCO_Performance_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      if (typeof XLSX.writeFileXLSX === 'function') {
+        XLSX.writeFileXLSX(wb, fileName);
+      } else {
+        XLSX.writeFile(wb, fileName, { bookType: 'xlsx' });
+      }
+      showToast('SACCO Excel Report downloaded!');
+    } catch (err) {
+      showToast('Failed to export SACCO report: ' + String(err.message || err));
+    }
+  });
+
+  container.querySelector('#sacco-btn-export-word')?.addEventListener('click', async () => {
+    showToast('Generating SACCO Word Report…');
+    try {
+      const [mList, sList, lList, rList] = await Promise.all([
+        dataService.getSaccoMembers(),
+        dataService.getSaccoSavings(),
+        dataService.getSaccoLoans(),
+        dataService.getSaccoRepayments(),
+      ]);
+
+      const totSav = sList.reduce((s, r) => s + Number(r.amount || 0), 0);
+      const totLoans = lList.reduce((s, r) => s + Number(r.amount || 0), 0);
+      const totRep = rList.reduce((s, r) => s + Number(r.amount || 0), 0);
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SACCO Performance & Loan Book Report</title>
+  <style>
+    @page { size: A4 landscape; margin: 1.2cm; }
+    body { font-family: Calibri, Arial, sans-serif; font-size: 10pt; color: #0f172a; margin: 0; }
+    h1 { font-size: 16pt; color: #0f172a; margin: 0 0 4pt; }
+    h2 { font-size: 12pt; color: #1e293b; margin: 12pt 0 6pt; border-bottom: 1pt solid #cbd5e1; padding-bottom: 3pt; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; table-layout: fixed; }
+    th, td { border-bottom: 0.75pt solid #cbd5e1; padding: 5pt 6pt; vertical-align: top; font-size: 9pt; word-break: break-word; }
+    th { background: #1e3a5f; color: #ffffff; text-align: left; font-weight: bold; }
+    .num { text-align: right; }
+  </style>
+</head>
+<body>
+  <h1>NYAKAMENTA FARM WORKERS SACCO</h1>
+  <p style="font-size:10pt;color:#64748b;">Master Performance & Loan Book Report · Generated ${new Date().toLocaleDateString('en-GB')}</p>
+  
+  <h2>1. Financial Summary</h2>
+  <table>
+    <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+    <tbody>
+      <tr><td>Total Registered Members</td><td class="num">${mList.length} Members</td></tr>
+      <tr><td>Total Accumulated Savings</td><td class="num">${dataService.formatCurrency(totSav)}</td></tr>
+      <tr><td>Total Active Loan Principal Issued</td><td class="num">${dataService.formatCurrency(totLoans)}</td></tr>
+      <tr><td>Total Loan Repayments Collected</td><td class="num">${dataService.formatCurrency(totRep)}</td></tr>
+      <tr><td>Outstanding Loan Balance</td><td class="num">${dataService.formatCurrency(Math.max(totLoans - totRep, 0))}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Registered Members (${mList.length})</h2>
+  <table>
+    <thead><tr><th>Member No</th><th>Full Name</th><th>Phone</th><th>Status</th></tr></thead>
+    <tbody>
+      ${mList.map(m => `<tr><td>${m.member_no || ''}</td><td>${m.full_name || ''}</td><td>${m.phone || '—'}</td><td>${m.status || 'Active'}</td></tr>`).join('')}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+      const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SACCO_Performance_Report_${new Date().toISOString().slice(0, 10)}.doc`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('SACCO Word Report downloaded!');
+    } catch (err) {
+      showToast('Failed to download SACCO report: ' + String(err.message || err));
+    }
   });
 
   container.querySelector('#sacco-btn-add-repayment')?.addEventListener('click', () => {
