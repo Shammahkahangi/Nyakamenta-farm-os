@@ -758,13 +758,13 @@ function renderCashBookHtml(items, from, to) {
   const periodNote = formatRangeHint(rf, rt);
   const openingLine = `<p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px 0;">${escHtml(
     periodNote
-  )} · Opening balance at start of period: <strong>${dataService.formatCurrency(opening)}</strong></p>`;
+  )} · Starting balance for selected period: <strong>${dataService.formatCurrency(opening)}</strong></p>`;
     const rangeHint =
-    '<p style="font-size:11px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.45;">Only lines whose <strong>ledger date</strong> falls between <strong>From</strong> and <strong>To</strong> (inclusive) appear here. Payroll expenses mirrored from runs are dated at <strong>month-end of the pay run</strong> (e.g. February payroll → last day of February). If lines appear on Owner Overview but not here, widen the period (e.g. <strong>YTD</strong> or <strong>All time</strong>) or extend <strong>To</strong> past that month-end.</p>';
+    '<p style="font-size:11px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.45;">Transactions whose date falls between <strong>From</strong> and <strong>To</strong> appear below. Staff salary expenses are dated at month-end.</p>';
 
   return `
     ${reportBlurb(
-      'Estate ledger in UGX: coffee operations and Ruhunga farm house (tagged separately), plus lodge flows and mirrored field costs. Rows and running balance respect the date range in the bar above; balance includes net cash from all lines before the range start.'
+      'Complete list of money received (income) and money spent (expenses) with running balance.'
     )}
     <div class="fa-report-preamble">
     ${openingLine}
@@ -1040,40 +1040,35 @@ function renderGeneralReportHtml({ items, contracts, blocks, batches, from, to }
 
   return `
     ${reportBlurb(
-      `General farm activity for ${formatRangeHint(from, to)}: ledger movements (including automatic posts from dispatch, payroll, and field ops), domestic dispatches, and production snapshot. Dispatch sales post once into the farm ledger — there is no separate sales register tab.`
+      `General farm summary for ${formatRangeHint(from, to)}: income, expenses, estate acreage, and production processing output.`
     )}
     <div class="fa-kpi-grid">
       <div class="fa-kpi fa-kpi-green">
-        <div class="fa-kpi-h">Revenue</div>
+        <div class="fa-kpi-h">Total Income</div>
         <div class="fa-kpi-v">${fmt(rev)}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">${inRange.filter((i) => i.type === 'Revenue').length} lines</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${inRange.filter((i) => i.type === 'Revenue').length} transactions</div>
       </div>
       <div class="fa-kpi fa-kpi-red">
-        <div class="fa-kpi-h">Expenses</div>
+        <div class="fa-kpi-h">Total Expenses</div>
         <div class="fa-kpi-v">${fmt(exp)}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">${inRange.filter((i) => i.type === 'Expense').length} lines</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">${inRange.filter((i) => i.type === 'Expense').length} transactions</div>
       </div>
       <div class="fa-kpi ${net >= 0 ? 'fa-kpi-blue' : 'fa-kpi-orange'}">
-        <div class="fa-kpi-h">Net result</div>
+        <div class="fa-kpi-h">Net Income</div>
         <div class="fa-kpi-v">${fmt(Math.abs(net))}<span class="fa-kpi-sub"> ${net >= 0 ? 'profit' : 'loss'}</span></div>
         <div class="fa-kpi-f fa-kpi-f-muted">Selected period</div>
-      </div>
-      <div class="fa-kpi fa-kpi-amber">
-        <div class="fa-kpi-h">Domestic dispatch</div>
-        <div class="fa-kpi-v">${fmt(dispatchVal)}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">${dispatches.length} loads · ${dispatchKg.toLocaleString()} kg</div>
       </div>
     </div>
     <div class="fa-kpi-grid">
       <div class="fa-kpi fa-kpi-blue">
         <div class="fa-kpi-h">Estate (farm)</div>
         <div class="fa-kpi-v">${fmt(Math.abs(farmRev - farmExp))}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(farmRev)} · Exp ${fmt(farmExp)}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Income ${fmt(farmRev)} · Exp ${fmt(farmExp)}</div>
       </div>
       <div class="fa-kpi fa-kpi-amber">
         <div class="fa-kpi-h">Ruhunga farm house</div>
         <div class="fa-kpi-v">${fmt(Math.abs(houseRev - houseExp))}</div>
-        <div class="fa-kpi-f fa-kpi-f-muted">Rev ${fmt(houseRev)} · Exp ${fmt(houseExp)}</div>
+        <div class="fa-kpi-f fa-kpi-f-muted">Income ${fmt(houseRev)} · Exp ${fmt(houseExp)}</div>
       </div>
       <div class="fa-kpi fa-kpi-green">
         <div class="fa-kpi-h">Estate acreage</div>
@@ -1088,37 +1083,9 @@ function renderGeneralReportHtml({ items, contracts, blocks, batches, from, to }
     </div>
 
     <div class="fa-card fa-card-pad0">
-      <div class="fa-card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-        <div>
-          <div class="fa-card-title">Domestic dispatches (period)</div>
-          <div class="fa-card-desc">Green coffee sales — each load also posts revenue to the farm ledger</div>
-        </div>
-        <button type="button" class="fa-btn-primary" id="fa-add-dispatch">
-          <span class="material-symbols-outlined">local_shipping</span> Record dispatch
-        </button>
-      </div>
-      <div class="fa-table-wrap">
-        <table class="fa-table">
-          <thead>
-            <tr>
-              <th>ID</th><th>Receiver</th><th>Grade</th><th class="fa-th-num">Net kg</th>
-              <th class="fa-th-num">Value</th><th>Date</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${
-              dispatchRows ||
-              `<tr><td colspan="7" class="fa-td-empty">No dispatches in this period. Use Record dispatch to log a sale.</td></tr>`
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="fa-card fa-card-pad0">
       <div class="fa-card-head">
-        <div class="fa-card-title">Ledger activity by source</div>
-        <div class="fa-card-desc">What fed the farm ledger in this period (automatic + manual)</div>
+        <div class="fa-card-title">Expense & Income Breakdown</div>
+        <div class="fa-card-desc">Summary of transactions by category for this period</div>
       </div>
       <div class="fa-table-wrap">
         <table class="fa-table">
@@ -1917,8 +1884,8 @@ async function renderFinance(container) {
       <div class="fa-header">
         <div class="fa-header-top">
           <div class="fa-header-text">
-            <h1 class="fa-title"><span class="material-symbols-outlined fa-book-ico">menu_book</span> Farm accounting</h1>
-          </div>
+          <h1 class="fa-title"><span class="material-symbols-outlined fa-book-ico">payments</span> Farm Finance</h1>
+        </div>
           <div class="fa-header-actions">
             <button type="button" class="fa-btn-outline" id="fa-export-csv" title="Download ledger CSV for the selected period">
               <span class="material-symbols-outlined">table</span> Export CSV
