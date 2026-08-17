@@ -26,11 +26,8 @@ const PIE_COLORS = ['#1e3a5f', '#2563eb', '#0ea5e9', '#38bdf8', '#7dd3fc', '#c78
 const ACCOUNTING_SUBTABS = [
   { id: 'overview', label: 'Farm Overview' },
   { id: 'overview-ruhunga', label: 'Ruhunga Overview' },
-  { id: 'general', label: 'General Report' },
-  { id: 'income', label: 'Comprehensive Income' },
-  { id: 'cashflow', label: 'Cashflow Statement' },
-  { id: 'analysis', label: 'Financial Analysis' },
   { id: 'cashbook', label: 'Cash Book' },
+  { id: 'general', label: 'General Report' },
 ];
 
 const OVERVIEW_SCOPE = {
@@ -47,11 +44,14 @@ const OVERVIEW_SCOPE = {
 };
 
 const LEGACY_SUBTAB = {
-  field: 'income',
-  labor: 'income',
-  inputs: 'income',
-  transport: 'income',
-  revenue: 'income',
+  field: 'overview',
+  labor: 'overview',
+  inputs: 'overview',
+  transport: 'overview',
+  revenue: 'overview',
+  income: 'overview',
+  cashflow: 'cashbook',
+  analysis: 'overview',
   journal: 'cashbook',
   loans: 'overview',
   aging: 'overview',
@@ -1880,13 +1880,7 @@ async function renderFinance(container) {
           from: rf,
           to: rt,
         });
-      } else if (activeSub === 'income') {
-        bodyHtml = renderComprehensiveIncomeHtml(items, win.year);
-      } else if (activeSub === 'cashflow') {
-        bodyHtml = renderCashflowHtml(items, win.year);
-      } else if (activeSub === 'analysis') {
-        bodyHtml = renderAnalysisHtml(items, blocks, batches, win.year);
-      } else if (activeSub === 'cashbook') {
+      } else {
         bodyHtml = renderCashBookHtml(items, rf, rt);
       }
     }
