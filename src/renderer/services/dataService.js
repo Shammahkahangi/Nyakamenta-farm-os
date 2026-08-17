@@ -1451,11 +1451,25 @@ const dataService = {
         `);
     },
     async addSaccoRepayment({ loan_id, amount, repayment_date, method, notes }) {
-        return await getEstateApi().execute(
+        const res = await getEstateApi().execute(
             `INSERT INTO sacco_repayments (loan_id, amount, repayment_date, method, notes)
              VALUES (?, ?, ?, ?, ?)`,
             [loan_id, amount || 0, repayment_date || '', method || 'Cash', notes || '']
         );
+        if (loan_id) {
+            try {
+                const loans = await getEstateApi().query('SELECT amount FROM sacco_loans WHERE id = ?', [loan_id]);
+                const reps = await getEstateApi().query('SELECT SUM(amount) as total FROM sacco_repayments WHERE loan_id = ?', [loan_id]);
+                if (loans[0] && reps[0]) {
+                    const principal = Number(loans[0].amount || 0);
+                    const paid = Number(reps[0].total || 0);
+                    if (paid >= principal && principal > 0) {
+                        await getEstateApi().execute("UPDATE sacco_loans SET status = 'Paid' WHERE id = ?", [loan_id]);
+                    }
+                }
+            } catch { /* ignore */ }
+        }
+        return res;
     },
     async updateSaccoMember(id, fields) {
         const allowed = ['member_no', 'full_name', 'phone', 'national_id', 'join_date', 'status'];

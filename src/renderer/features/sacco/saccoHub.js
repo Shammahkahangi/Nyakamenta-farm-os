@@ -1698,12 +1698,15 @@ async function renderLoansTab(container, data, refresh) {
           ${loans
             .map((l) => {
               const bal = loanBalance(l, repayments);
+              const isPaid = bal <= 0;
+              const statusText = isPaid ? 'Paid' : (l.status || 'Active');
+              const badgeClass = isPaid ? 'green' : ((l.status || '').toLowerCase() === 'active' ? 'amber' : 'muted');
               return `
             <tr class="loan-row" data-loan-id="${l.id}" style="cursor:pointer;">
               <td class="strong">${l.member_name || '—'}</td>
               <td class="tabular-nums">${dataService.formatCurrency(Number(l.amount || 0))}</td>
               <td class="tabular-nums">${dataService.formatCurrency(bal)}</td>
-              <td><span class="badge ${(l.status || '').toLowerCase() === 'active' ? 'amber' : 'muted'}">${l.status || '—'}</span></td>
+              <td><span class="badge ${badgeClass}">${statusText}</span></td>
             </tr>`;
             })
             .join('')}
