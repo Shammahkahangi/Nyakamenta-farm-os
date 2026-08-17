@@ -48,6 +48,7 @@ function wordDocCss() {
     @media print {
       @page { size: A4 landscape; margin: 10mm; }
       body { margin: 0; }
+      .fa-th-actions, .fa-td-actions, .fa-delete-entry { display: none !important; }
     }
     body { font-family: "Book Antiqua", Georgia, serif; color: #0f172a; font-size: 10pt; line-height: 1.35; width: 100%; margin: 0; }
     h1 { font-size: 16pt; margin: 0 0 6pt; color: #0f172a; }
@@ -75,12 +76,14 @@ function wordDocCss() {
 }
 
 function htmlTableFromEl(tableEl) {
-  const headCells = [...tableEl.querySelectorAll('thead th')];
+  const headCells = [...tableEl.querySelectorAll('thead th')].filter(
+    (th) => !th.classList.contains('fa-th-actions') && textOf(th).toLowerCase() !== 'delete'
+  );
   let thead = '';
   if (headCells.length) {
     thead = `<thead><tr>${headCells
       .map((th, i) => {
-        const num = th.classList.contains('fa-th-num') || i > 0;
+        const num = th.classList.contains('fa-th-num') || (i > 0 && i < headCells.length - 1);
         return `<th class="${num ? 'num' : ''}">${escHtml(textOf(th))}</th>`;
       })
       .join('')}</tr></thead>`;
@@ -88,10 +91,15 @@ function htmlTableFromEl(tableEl) {
 
   const bodyRows = [...tableEl.querySelectorAll('tbody tr')]
     .map((tr) => {
-      const tds = [...tr.querySelectorAll('td')];
+      const tds = [...tr.querySelectorAll('td')].filter(
+        (td) =>
+          !td.classList.contains('fa-td-actions') &&
+          !td.querySelector('.fa-delete-entry') &&
+          textOf(td).trim().toLowerCase() !== 'delete'
+      );
       if (!tds.length) return '';
       if (tds.some((td) => td.classList.contains('fa-td-empty'))) {
-        return `<tr><td colspan="${Math.max(tds.length, 1)}" style="text-align:center;color:#94a3b8;">${escHtml(textOf(tds[0]))}</td></tr>`;
+        return `<tr><td colspan="${Math.max(headCells.length, 1)}" style="text-align:center;color:#94a3b8;">${escHtml(textOf(tds[0]))}</td></tr>`;
       }
       const style = tr.getAttribute('style') || '';
       const isTotal = /font-weight:\s*700/.test(style);
@@ -99,7 +107,8 @@ function htmlTableFromEl(tableEl) {
         .map((td, i) => {
           const isNum = td.classList.contains('fa-td-num') || i > 0;
           const cls = [isNum ? 'num' : '', amountClass(td)].filter(Boolean).join(' ');
-          return `<td class="${cls}">${escHtml(textOf(td))}</td>`;
+          let txt = textOf(td).replace(/^[\-−]\s*UGX/, 'UGX').replace(/^[\-−]/, '');
+          return `<td class="${cls}">${escHtml(txt)}</td>`;
         })
         .join('');
       return `<tr class="${isTotal ? 'total' : ''}">${cells}</tr>`;

@@ -747,7 +747,7 @@ function renderCashBookHtml(items, from, to) {
       <td class="fa-td">${escHtml(dataService.costCenterLabel(item.cost_center))}</td>
       <td class="fa-td-desc">${escHtml(item.description || '—')}</td>
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
-        ${item.type === 'Revenue' ? '+' : '−'}${dataService.formatLedgerUgx(amt)}
+        ${dataService.formatLedgerUgx(amt)}
       </td>
       <td class="fa-td-num">${dataService.formatCurrency(bal)}</td>
       <td class="fa-td fa-td-actions">${financeEntryDeleteBtn(item)}</td>
@@ -1469,7 +1469,7 @@ function renderJournalTable(items, title, emptyMsg) {
       <td class="fa-td">${item.category || '—'}</td>
       <td class="fa-td-desc">${(item.description || '').replace(/</g, '&lt;')}</td>
       <td class="fa-td-num ${item.type === 'Revenue' ? 'fa-num-rev' : 'fa-num-exp'}">
-        ${item.type === 'Revenue' ? '+' : '−'}${dataService.formatLedgerUgx(Number(item.amount))}
+        ${dataService.formatLedgerUgx(Number(item.amount))}
       </td>
       <td class="fa-td fa-td-actions">${financeEntryDeleteBtn(item)}</td>
     </tr>`
