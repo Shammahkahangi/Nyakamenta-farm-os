@@ -1045,7 +1045,7 @@ async function renderOverviewTab(container, data, refresh) {
   } catch {
     wb = null;
   }
-  const useWb = wb && wb.ok === true;
+  const useWb = wb && wb.ok === true && (!members || members.length === 0);
 
   const dist = useWb ? { bins: wb.loanBins, max: wb.maxLoanBin } : loanDistribution(loans, repayments);
   const savSeries = useWb ? wb.savSeries : savingsByMonth(savings);
