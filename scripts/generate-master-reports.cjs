@@ -17,8 +17,8 @@ function safeWriteFile(filePath, buffer) {
     return filePath;
   } catch (err) {
     const ext = path.extname(filePath);
-    const base = path.basename(filePath, ext);
-    const altPath = path.join(path.dirname(filePath), `${base}_Updated${ext}`);
+    const base = path.basename(filePath, ext).replace(/_v\d+|_Updated/g, '');
+    const altPath = path.join(path.dirname(filePath), `${base}_v${Date.now()}${ext}`);
     fs.writeFileSync(altPath, buffer);
     return altPath;
   }
@@ -263,7 +263,21 @@ async function run() {
         heading("1. Executive Overview", HeadingLevel.HEADING_3),
         pText(`The SACCO has ${totalSaccoMembers} registered members with total accumulated savings of ${fmt(totalSaccoSavings)}. Total loans issued stand at ${fmt(totalSaccoLoans)}, with ${fmt(totalSaccoRepayments)} in loan repayments collected to date and an outstanding balance of ${fmt(totalSaccoOutstanding)} across all active accounts.`),
 
-        heading("2. Loan Book & Repayment Status", HeadingLevel.HEADING_3),
+        heading("2. Member Savings Balances (Jan – Jul 2026)", HeadingLevel.HEADING_3),
+        pText(`Total accumulated member savings deposits across all registered members: ${fmt(totalSaccoSavings)}`),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({ children: [headerCell("Member No"), headerCell("Full Name"), headerCell("Phone"), headerCell("Accumulated Savings (UGX)"), headerCell("Status")] }),
+            ...saccoMembers.map(m => {
+              const memSav = saccoSavings.filter(s => s.member_id === m.id).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+              return new TableRow({ children: [cell(m.member_no || '—'), cell(m.full_name), cell(m.phone || '—'), cell(fmt(memSav), true), cell(m.status)] });
+            }),
+            new TableRow({ children: [cell("Total", true), cell("All Members Total Savings", true), cell("—", true), cell(fmt(totalSaccoSavings), true), cell("Active", true)] })
+          ]
+        }),
+
+        heading("3. Loan Book & Repayment Status", HeadingLevel.HEADING_3),
         new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
           rows: [
@@ -274,15 +288,6 @@ async function run() {
               const st = bal <= 0 ? 'Paid' : (l.status || 'Active');
               return new TableRow({ children: [cell(`#${l.id}`), cell(l.full_name || 'Member'), cell(fmt(l.amount)), cell(`Paid ${fmt(reps)} (Bal ${fmt(bal)})`), cell(st, st === 'Paid')] });
             })
-          ]
-        }),
-
-        heading("3. Registered SACCO Members", HeadingLevel.HEADING_3),
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: [
-            new TableRow({ children: [headerCell("Member No"), headerCell("Full Name"), headerCell("Phone"), headerCell("Status")] }),
-            ...saccoMembers.map(m => new TableRow({ children: [cell(m.member_no), cell(m.full_name), cell(m.phone || '—'), cell(m.status)] }))
           ]
         })
       ]

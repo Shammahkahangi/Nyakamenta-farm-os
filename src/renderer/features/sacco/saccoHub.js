@@ -1433,7 +1433,23 @@ function bindSaccoOverviewActions(container, members, loans, refresh) {
     </tbody>
   </table>
 
-  <h2>2. SACCO Loan Accounts & Status (${lList.length} Loans)</h2>
+  <h2>2. Member Savings Balances (${mList.length} Members)</h2>
+  <table>
+    <thead><tr><th>Member No</th><th>Full Name</th><th>Phone</th><th class="num">Accumulated Savings</th><th>Status</th></tr></thead>
+    <tbody>
+      ${mList.map(m => {
+        const memSav = sList.filter(s => s.member_id === m.id).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        return `<tr><td>${m.member_no || '—'}</td><td>${m.full_name || ''}</td><td>${m.phone || '—'}</td><td class="num"><strong>${dataService.formatCurrency(memSav)}</strong></td><td>${m.status || 'Active'}</td></tr>`;
+      }).join('')}
+      <tr style="font-weight:bold;background:#f8fafc;">
+        <td colspan="3">Total All Members Savings</td>
+        <td class="num">${dataService.formatCurrency(totSav)}</td>
+        <td>Active</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. SACCO Loan Accounts & Status (${lList.length} Loans)</h2>
   <table>
     <thead><tr><th>Loan ID</th><th>Member Name</th><th class="num">Principal Issued</th><th class="num">Repaid</th><th class="num">Balance</th><th>Status</th></tr></thead>
     <tbody>
@@ -1444,14 +1460,6 @@ function bindSaccoOverviewActions(container, members, loans, refresh) {
         const st = bal <= 0 ? 'Paid' : (l.status || 'Active');
         return `<tr><td>#${l.id}</td><td>${mem ? mem.full_name : 'Member'}</td><td class="num">${dataService.formatCurrency(l.amount)}</td><td class="num">${dataService.formatCurrency(reps)}</td><td class="num">${dataService.formatCurrency(bal)}</td><td><strong>${st}</strong></td></tr>`;
       }).join('')}
-    </tbody>
-  </table>
-
-  <h2>3. Registered Members (${mList.length})</h2>
-  <table>
-    <thead><tr><th>Member No</th><th>Full Name</th><th>Phone</th><th>Status</th></tr></thead>
-    <tbody>
-      ${mList.map(m => `<tr><td>${m.member_no || ''}</td><td>${m.full_name || ''}</td><td>${m.phone || '—'}</td><td>${m.status || 'Active'}</td></tr>`).join('')}
     </tbody>
   </table>
 </body>
